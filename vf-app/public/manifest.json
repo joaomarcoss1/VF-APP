@@ -1,0 +1,16 @@
+{
+  "name": "VF Nexus — Gestão SaaS Premium",
+  "short_name": "VF Nexus",
+  "description": "VF Nexus, criado pela NexLabs, para gestão financeira, vendas, agenda, estoque, relatórios e operação multirramo.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#04070D",
+  "theme_color": "#0A8DFF",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["business", "finance", "productivity", "food", "shopping"]
+}
