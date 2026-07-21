@@ -1,0 +1,26 @@
+# Checklist V15 10/10 Final
+
+- [ ] Build local OK.
+- [ ] Build Vercel OK.
+- [ ] Login OK.
+- [ ] Admin Master OK.
+- [ ] Empresa A isolada.
+- [ ] Empresa B isolada.
+- [ ] PDV isolado.
+- [ ] Estoque isolado.
+- [ ] Scanner isolado.
+- [ ] Etiquetas isoladas.
+- [ ] Importação isolada.
+- [ ] Entregas isoladas.
+- [ ] Portal do entregador OK.
+- [ ] Offline PDV OK.
+- [ ] Offline entregas OK.
+- [ ] Relatórios OK.
+- [ ] Financeiro OK.
+- [ ] Auditoria OK.
+- [ ] RLS OK.
+- [ ] Mobile OK.
+- [ ] Desktop OK.
+- [ ] PWA OK.
+- [ ] Migrations OK.
+- [ ] Testes OK.

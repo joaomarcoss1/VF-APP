@@ -1,0 +1,25 @@
+{
+  "name": "VF Nexus — App Modular",
+  "short_name": "VF Nexus",
+  "description": "Aplicativo SaaS modular por ramo, com operação mobile para atendimento, caixa, estoque, serviços e gestão.",
+  "id": "/selecionar-ramo",
+  "start_url": "/selecionar-ramo?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "orientation": "portrait-primary",
+  "categories": ["business", "productivity", "food", "shopping"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Escolher ramo", "short_name": "Ramo", "url": "/selecionar-ramo", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "VF Nexus Atendimento", "short_name": "Atender", "url": "/atendimento", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Cozinha", "short_name": "Cozinha", "url": "/cozinha", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Bar / Drinks", "short_name": "Bar", "url": "/bar-drinks", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Caixa", "short_name": "Caixa", "url": "/atendimento/caixa", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

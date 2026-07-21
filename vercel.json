@@ -1,0 +1,5 @@
+{
+  "framework": "nextjs",
+  "installCommand": "npm ci --legacy-peer-deps --no-audit --no-fund --registry=https://registry.npmjs.org/",
+  "buildCommand": "npm run build"
+}
