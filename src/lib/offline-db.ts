@@ -84,7 +84,7 @@ export const OfflineDB = {
     await tx('vendas_pendentes', 'readwrite', os => os.delete(id))
   },
 
-  async cacheProdutos(produtos: Array<Record<string, unknown>>, empresaId: string) {
+  async cacheProdutos<T extends { id: string | number }>(produtos: readonly T[], empresaId: string | null | undefined) {
     if (!empresaId) return
     for (const produto of produtos) await tx('produtos_cache', 'readwrite', os => os.put({ id: `${empresaId}:${produto.id}`, empresa_id: empresaId, data: produto, updated_at: new Date().toISOString() }))
   },
@@ -94,7 +94,8 @@ export const OfflineDB = {
     return rows.filter(row => row.empresa_id === empresaId).map(row => row.data)
   },
 
-  async buscarProdutoCache(codigo: string, empresaId: string): Promise<Record<string, unknown> | null> {
+  async buscarProdutoCache(codigo: string, empresaId: string | null | undefined): Promise<Record<string, unknown> | null> {
+    if (!empresaId) return null
     const clean = codigo.trim()
     const products = await this.listarProdutosCache(empresaId)
     return products.find(product => product.codigo_barras === clean || product.sku === clean || product.codigo_interno === clean) || null

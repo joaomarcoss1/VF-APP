@@ -40,7 +40,7 @@ export default function PdvPage() {
 
   useEffect(() => {
     if (produtos?.length) OfflineDB.cacheProdutos(produtos, empresaIdAtual).catch(() => null)
-  }, [produtos])
+  }, [produtos, empresaIdAtual])
 
   const produtosVisiveis = useMemo(() => (produtos ?? []).filter(p => p.ativo && p.disponivel && Number(p.preco_venda || 0) > 0).slice(0, 80), [produtos])
   const subtotal = useMemo(() => cart.reduce((acc, item) => acc + (Number(item.produto.preco_venda || 0) * item.quantidade) - item.desconto, 0), [cart])
