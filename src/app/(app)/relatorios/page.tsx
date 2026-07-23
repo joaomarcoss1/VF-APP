@@ -7,6 +7,7 @@ import { Alert, Badge, Button, Card, Empty, Field, Input, KpiCard, Skeleton } fr
 import { ProdutosService, InsumosService, VendasService, EventosService, PromocoesService, IdentidadeService, DespesasService } from '@/services'
 import { fmtCurrency, fmtPct } from '@/lib/precificacao'
 import toast from 'react-hot-toast'
+import { aggregateProductProfitability } from '@/features/reports/product-profitability'
 
 export default function RelatoriosPage() {
   const hoje = new Date()
@@ -62,8 +63,9 @@ export default function RelatoriosPage() {
   const cmpCmv = comparar(cmvGeral, cmvAnterior)
   const cmpTicket = comparar(ticketMedio, ticketAnterior)
 
-  const ranking = useMemo(() => [...produtos].sort((a, b) => Number(b.lucro_bruto ?? 0) - Number(a.lucro_bruto ?? 0)).slice(0, 5), [produtos])
-  const baixaMargem = useMemo(() => [...produtos].filter(p => Number(p.preco_venda ?? 0) > 0).sort((a, b) => Number(a.margem_bruta ?? 0) - Number(b.margem_bruta ?? 0)).slice(0, 5), [produtos])
+  const rentabilidade = useMemo(() => aggregateProductProfitability(vendas), [vendas])
+  const ranking = useMemo(() => [...rentabilidade].sort((a, b) => b.lucro_bruto - a.lucro_bruto).slice(0, 5), [rentabilidade])
+  const baixaMargem = useMemo(() => [...rentabilidade].filter(p => p.receita > 0).sort((a, b) => a.margem_percentual - b.margem_percentual).slice(0, 5), [rentabilidade])
   const estoqueCritico = useMemo(() => insumos.filter(i => Number(i.estoque_minimo ?? 0) > 0 && Number(i.estoque_atual ?? 0) <= Number(i.estoque_minimo ?? 0)).slice(0, 8), [insumos])
   const canais = useMemo(() => {
     const map = new Map<string, number>()
@@ -168,9 +170,9 @@ export default function RelatoriosPage() {
           <Card className="p-4">
             <div className="text-[12px] text-[var(--vf-text3)] uppercase tracking-wide mb-3">Produtos mais lucrativos</div>
             {ranking.length ? ranking.map((p, i) => (
-              <div key={p.id} className="flex items-center justify-between py-2 border-b border-[var(--vf-border)] last:border-0">
+              <div key={p.produto_id} className="flex items-center justify-between py-2 border-b border-[var(--vf-border)] last:border-0">
                 <div><span className="text-[var(--vf-text3)] mr-2">#{i + 1}</span><span className="text-[var(--vf-text)] text-[13px]">{p.nome}</span></div>
-                <div className="text-[var(--vf-success)] text-[13px] font-semibold">{fmtCurrency(p.lucro_bruto ?? 0)}</div>
+                <div className="text-[var(--vf-success)] text-[13px] font-semibold">{fmtCurrency(p.lucro_bruto)}</div>
               </div>
             )) : <Empty icon="🍽️" title="Sem produtos" description="Cadastre produtos para gerar ranking." />}
           </Card>
@@ -178,9 +180,9 @@ export default function RelatoriosPage() {
           <Card className="p-4">
             <div className="text-[12px] text-[var(--vf-text3)] uppercase tracking-wide mb-3">Produtos com menor margem</div>
             {baixaMargem.length ? baixaMargem.map(p => (
-              <div key={p.id} className="flex items-center justify-between py-2 border-b border-[var(--vf-border)] last:border-0">
+              <div key={p.produto_id} className="flex items-center justify-between py-2 border-b border-[var(--vf-border)] last:border-0">
                 <div className="text-[var(--vf-text)] text-[13px]">{p.nome}</div>
-                <Badge color={Number(p.margem_bruta ?? 0) < 35 ? 'red' : 'amber'}>{fmtPct(p.margem_bruta ?? 0)}</Badge>
+                <Badge color={p.margem_percentual < 35 ? 'red' : 'amber'}>{fmtPct(p.margem_percentual)}</Badge>
               </div>
             )) : <Empty icon="📉" title="Sem análise" description="Crie fichas técnicas para calcular margens." />}
           </Card>

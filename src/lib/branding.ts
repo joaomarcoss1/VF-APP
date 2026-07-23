@@ -20,7 +20,7 @@ export type Branding = {
   modo_tema: 'light' | 'dark' | 'custom'
 }
 
-const STORAGE_KEY = 'vf-nexus-branding-v3'
+const STORAGE_KEY = 'vf-nexus-branding-v9-3'
 
 export const DEFAULT_BRANDING: Branding = {
   nome: 'VF Nexus',
@@ -169,24 +169,20 @@ export function applyBrandingVars(input?: Partial<IdentidadeEmpresa> | Partial<B
   root.style.setProperty('--vf-brand-primary', b.cor_primaria)
   root.style.setProperty('--vf-brand-secondary', b.cor_secundaria)
   root.style.setProperty('--vf-brand-border', b.cor_borda)
-  root.style.setProperty('--vf-border', `color-mix(in srgb, ${b.cor_borda} 70%, var(--vf-border))`)
-  root.style.setProperty('--vf-success', b.cor_sucesso)
-  root.style.setProperty('--vf-warning', b.cor_alerta)
-  root.style.setProperty('--vf-error', b.cor_erro)
-  root.style.setProperty('--vf-info', b.cor_info)
-  root.style.setProperty('--vf-green', b.cor_sucesso)
-  root.style.setProperty('--vf-red', b.cor_erro)
-  root.style.setProperty('--vf-blue', b.cor_info)
-  root.style.setProperty('--vf-amber', b.cor_alerta)
-  root.style.setProperty('--vf-black', b.cor_fundo)
-  root.style.setProperty('--vf-gold', b.cor_primaria)
+  // Cores semânticas são controladas exclusivamente pelo Design System.
+  // Branding não pode transformar erro, sucesso ou alerta em cores decorativas.
+  root.style.setProperty('--vf-brand-primary', b.cor_primaria)
+  root.style.setProperty('--vf-brand-secondary', b.cor_secundaria)
+  root.style.setProperty('--vf-gold', b.cor_secundaria)
   root.style.setProperty('--vf-gold-l', b.cor_secundaria)
   root.style.setProperty('--vf-gold-bg', `color-mix(in srgb, ${b.cor_primaria} 10%, transparent)`)
   root.style.setProperty('--vf-header-bg', 'color-mix(in srgb, var(--vf-surface) 94%, transparent)')
   root.style.setProperty('--vf-accent-soft', `color-mix(in srgb, ${b.cor_primaria} 10%, transparent)`)
   root.style.setProperty('--vf-secondary-soft', `color-mix(in srgb, ${b.cor_secundaria} 12%, transparent)`)
   root.style.setProperty('--vf-focus', `color-mix(in srgb, ${b.cor_primaria} 20%, transparent)`)
-  root.style.setProperty('--vf-fg-on-primary', isDarkColor(b.cor_primaria) ? '#FFFFFF' : '#04070D')
+  root.style.setProperty('--vf-fg-on-primary', readableTextFor(b.cor_primaria))
+  root.style.setProperty('--vf-fg-on-secondary', readableTextFor(b.cor_secundaria))
+  root.style.setProperty('--vf-primary-hover', `color-mix(in srgb, ${b.cor_primaria} 86%, ${isDarkColor(b.cor_primaria) ? '#FFFFFF' : '#000000'})`)
   root.dataset.vfTheme = b.modo_tema
   if (options?.persist) cacheBranding(b)
   try { window.dispatchEvent(new CustomEvent('vf-branding-updated', { detail: b })) } catch {}

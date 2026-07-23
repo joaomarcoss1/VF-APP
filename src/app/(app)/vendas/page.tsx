@@ -3,12 +3,14 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Header from '@/components/layout/Header'
-import { Alert, Badge, Button, Card, ConfirmActionButton, Empty, Field, Input, Modal, Select, Skeleton, Textarea } from '@/components/ui'
+import { Alert, Badge, Button, Card, ConfirmActionButton, Empty, Field, Input, Modal, Select, Skeleton, Textarea, SearchInput, Pagination } from '@/components/ui'
 import { IdentidadeService, PermissoesService, ProdutosService, VendasService } from '@/services'
-import { compartilharComprovanteWhatsappPDF } from '@/lib/exports'
+import { ReceiptService } from '@/services/documents/receipt.service'
 import { fmtCurrency } from '@/lib/precificacao'
 import type { CanalVenda, FormaPagamento, Produto, Venda, VendaItemForm, ComprovantePayload } from '@/types'
 import toast from 'react-hot-toast'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { useTenant } from '@/hooks/useTenant'
 
 const CANAIS: Array<{ value: CanalVenda; label: string }> = [
   { value: 'local', label: 'Presencial/local' },
@@ -66,6 +68,12 @@ function calcularItem(item: VendaItemForm) {
 
 export default function VendasPage() {
   const qc = useQueryClient()
+  const tenant = useTenant()
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const pageSize = 20
+  const debouncedSearch = useDebouncedValue(search, 350)
+  const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
   const [modal, setModal] = useState(false)
   const [meta, setMeta] = useState({ ...EMPTY_META })
   const [itemForm, setItemForm] = useState<Omit<ItemCarrinho, 'local_id'>>({ ...EMPTY_ITEM })
@@ -73,9 +81,16 @@ export default function VendasPage() {
   const [pagamentos, setPagamentos] = useState<PagamentoLocal[]>([novoPagamento(0, 'pix')])
   const [lastVenda, setLastVenda] = useState<Venda | null>(null)
 
-  const { data: produtos, isLoading: loadingProdutos } = useQuery({ queryKey: ['produtos-venda'], queryFn: () => ProdutosService.listar() })
-  const { data: identidade } = useQuery({ queryKey: ['identidade-vendas'], queryFn: IdentidadeService.obter })
-  const { data: vendas, isLoading } = useQuery({ queryKey: ['vendas-recentes'], queryFn: () => VendasService.listarPorPeriodo(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0], hoje()) })
+  const { data: produtos, isLoading: loadingProdutos } = useQuery({ queryKey: ['produtos-venda', tenant.operationalKey], queryFn: () => ProdutosService.listar() })
+  const { data: identidade } = useQuery({ queryKey: ['identidade-vendas', tenant.operationalKey], queryFn: IdentidadeService.obter })
+  const { data: vendasPage, isLoading, error: vendasError } = useQuery({
+    queryKey: ['vendas-recentes-v9-4', tenant.operationalKey, page, pageSize, debouncedSearch, inicioMes],
+    queryFn: () => VendasService.listarPaginado({ page, pageSize, search: debouncedSearch, inicio: inicioMes, fim: hoje() }),
+    placeholderData: previous => previous,
+  })
+  const vendas = vendasPage?.data ?? []
+  const totalVendas = vendasPage?.total ?? 0
+  const { data: resumoPeriodo } = useQuery({ queryKey: ['vendas-resumo-v9-4', tenant.operationalKey, inicioMes], queryFn: () => VendasService.resumoPeriodo(inicioMes, hoje()) })
   const { data: podeCancelar } = useQuery({ queryKey: ['perm-vendas-cancelar'], queryFn: () => PermissoesService.pode('vendas', 'cancelar'), retry: false })
   const { data: podeEstornar } = useQuery({ queryKey: ['perm-vendas-estornar'], queryFn: () => PermissoesService.pode('vendas', 'estornar'), retry: false })
 
@@ -99,15 +114,12 @@ export default function VendasPage() {
   const trocoTotal = pagamentosNormalizados.reduce((a, p) => a + Number(p.troco || 0), 0)
   const faltaReceber = Math.max(0, total - totalPagamentos)
 
-  const resumo = useMemo(() => {
-    const list = (vendas ?? []).filter(v => v.status !== 'cancelada' && v.status !== 'estornada')
-    return {
-      faturamento: list.reduce((a, v) => a + Number(v.total ?? 0), 0),
-      lucro: list.reduce((a, v) => a + Number(v.lucro ?? 0), 0),
-      qtd: list.length,
-      ticket: list.length ? list.reduce((a, v) => a + Number(v.total ?? 0), 0) / list.length : 0,
-    }
-  }, [vendas])
+  const resumo = {
+    faturamento: Number(resumoPeriodo?.faturamento || 0),
+    lucro: Number(resumoPeriodo?.lucro || 0),
+    qtd: Number(resumoPeriodo?.quantidade || 0),
+    ticket: Number(resumoPeriodo?.ticket_medio || 0),
+  }
 
   const selecionarProduto = (id: string) => {
     const p = (produtos ?? []).find(x => x.id === id) as Produto | undefined
@@ -128,17 +140,17 @@ export default function VendasPage() {
 
   const estornar = useMutation({
     mutationFn: ({ id, motivo }: { id: string; motivo: string }) => VendasService.estornar(id, motivo),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['vendas-recentes'] }); qc.invalidateQueries({ queryKey: ['financeiro-vendas'] }); qc.invalidateQueries({ queryKey: ['produto-estoque'] }); toast.success('Venda estornada e estoque/financeiro revertidos.') },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['vendas-recentes-v9-4'] }); qc.invalidateQueries({ queryKey: ['vendas-resumo-v9-4'] }); qc.invalidateQueries({ queryKey: ['financeiro-vendas'] }); qc.invalidateQueries({ queryKey: ['produto-estoque'] }); toast.success('Venda estornada e estoque/financeiro revertidos.') },
     onError: (e: Error) => toast.error(e.message),
   })
   const cancelar = useMutation({
     mutationFn: ({ id, motivo }: { id: string; motivo: string }) => VendasService.cancelar(id, motivo),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['vendas-recentes'] }); qc.invalidateQueries({ queryKey: ['financeiro-vendas'] }); qc.invalidateQueries({ queryKey: ['produto-estoque'] }); toast.success('Venda cancelada com auditoria.') },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['vendas-recentes-v9-4'] }); qc.invalidateQueries({ queryKey: ['vendas-resumo-v9-4'] }); qc.invalidateQueries({ queryKey: ['financeiro-vendas'] }); qc.invalidateQueries({ queryKey: ['produto-estoque'] }); toast.success('Venda cancelada com auditoria.') },
     onError: (e: Error) => toast.error(e.message),
   })
   const atualizarEntrega = useMutation({
     mutationFn: ({ id, status }: { id: string; status: any }) => VendasService.atualizarStatusEntrega(id, status),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['vendas-recentes'] }); toast.success('Status de entrega atualizado.') },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['vendas-recentes-v9-4'] }); qc.invalidateQueries({ queryKey: ['vendas-resumo-v9-4'] }); toast.success('Status de entrega atualizado.') },
     onError: (e: Error) => toast.error(e.message),
   })
 
@@ -169,7 +181,7 @@ export default function VendasPage() {
       } as any)
     },
     onSuccess: (v) => {
-      qc.invalidateQueries({ queryKey: ['vendas-recentes'] }); qc.invalidateQueries({ queryKey: ['financeiro-vendas'] }); qc.invalidateQueries({ queryKey: ['produto-estoque'] })
+      qc.invalidateQueries({ queryKey: ['vendas-recentes-v9-4'] }); qc.invalidateQueries({ queryKey: ['vendas-resumo-v9-4'] }); qc.invalidateQueries({ queryKey: ['financeiro-vendas'] }); qc.invalidateQueries({ queryKey: ['produto-estoque'] })
       setLastVenda(v); toast.success('Venda multi-itens registrada com pagamentos reais!'); setModal(false); setMeta({ ...EMPTY_META }); setItens([]); setPagamentos([novoPagamento(0, 'pix')]); setItemForm({ ...EMPTY_ITEM })
     },
     onError: (e: Error) => toast.error(e.message),
@@ -198,15 +210,21 @@ export default function VendasPage() {
   })
 
   const abrirWhatsapp = async (v?: Venda | null) => {
-    try { await compartilharComprovanteWhatsappPDF(payloadComprovante(v), v?.cliente_whatsapp || meta.cliente_whatsapp, identidade || undefined); toast.success('Comprovante em PDF preparado para o WhatsApp.') }
-    catch (e: any) { toast.error(e.message || 'Erro ao gerar comprovante em PDF.') }
+    try {
+      const result = await ReceiptService.shareWhatsApp(payloadComprovante(v), { entidadeId: v?.id, branding: identidade || undefined, consentimento: true })
+      if (result.mode === 'provider') toast.success('Comprovante em PDF enviado pelo WhatsApp.')
+      else {
+        toast('Envio automático indisponível. O WhatsApp será aberto para envio manual do PDF.')
+        if (result.fallbackUrl) window.open(result.fallbackUrl, '_blank', 'noopener,noreferrer')
+      }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Erro ao gerar comprovante em PDF.') }
   }
 
   const acoesVenda = (v: Venda) => v.status !== 'estornada' && v.status !== 'cancelada' ? <div className="flex flex-wrap justify-end gap-2">
-    <Button size="sm" variant="ghost" onClick={() => abrirWhatsapp(v)}>PDF/WhatsApp</Button>
+    <ConfirmActionButton title="Enviar comprovante pelo WhatsApp" description="Confirme que o cliente autorizou o envio. O sistema tentará enviar o PDF automaticamente e, sem provider configurado, abrirá o WhatsApp para envio manual." confirmLabel="Confirmar e enviar" onConfirm={() => abrirWhatsapp(v)}>PDF/WhatsApp</ConfirmActionButton>
     {podeCancelar && <ConfirmActionButton title="Cancelar venda" description="O cancelamento exige motivo, registra auditoria e marca financeiro/pagamentos como cancelados." confirmLabel="Cancelar venda" requireReason onConfirm={(motivo) => cancelar.mutate({ id: v.id, motivo: motivo || '' })}>Cancelar</ConfirmActionButton>}
     {podeEstornar && <ConfirmActionButton title="Estornar venda" description="O estorno exige motivo e reverte estoque/financeiro conforme função segura do banco." confirmLabel="Estornar venda" requireReason onConfirm={(motivo) => estornar.mutate({ id: v.id, motivo: motivo || '' })}>Estornar</ConfirmActionButton>}
-  </div> : <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => abrirWhatsapp(v)}>PDF/WhatsApp</Button><Badge color="red">{v.status}</Badge></div>
+  </div> : <div className="flex justify-end gap-2"><ConfirmActionButton title="Enviar comprovante pelo WhatsApp" description="Confirme que o cliente autorizou o envio deste PDF." confirmLabel="Confirmar e enviar" onConfirm={() => abrirWhatsapp(v)}>PDF/WhatsApp</ConfirmActionButton><Badge color="red">{v.status}</Badge></div>
 
   return (
     <div className="vf-fadein">
@@ -221,11 +239,12 @@ export default function VendasPage() {
           <Card className="p-4"><div className="text-xs text-[var(--vf-text2)] uppercase">Ticket médio</div><div className="text-2xl text-[var(--vf-secondary)] font-semibold">{fmtCurrency(resumo.ticket)}</div></Card>
         </div>
 
-        <div className="flex justify-end"><Button onClick={() => { setPagamentos([novoPagamento(0, 'pix')]); setModal(true) }}>Nova venda</Button></div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><SearchInput value={search} onChange={(value) => { setSearch(value); setPage(1) }} placeholder="Buscar produto, cliente ou WhatsApp..." /><Button onClick={() => { setPagamentos([novoPagamento(0, 'pix')]); setModal(true) }}>Nova venda</Button></div>
+        {vendasError && <Alert type="error">{(vendasError as Error).message}</Alert>}
 
         {lastVenda && <Card className="p-4 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between" gold>
           <div><b className="text-[var(--vf-text)]">Última venda:</b> <span className="text-[var(--vf-primary)]">{fmtCurrency(lastVenda.total)}</span><p className="text-sm text-[var(--vf-text2)]">Comprovante pronto com identidade da empresa.</p></div>
-          <Button variant="secondary" onClick={() => abrirWhatsapp(lastVenda)}>Enviar comprovante</Button>
+          <ConfirmActionButton title="Enviar comprovante pelo WhatsApp" description="Confirme que o cliente autorizou o envio deste PDF." confirmLabel="Confirmar e enviar" onConfirm={() => abrirWhatsapp(lastVenda)}>Enviar comprovante</ConfirmActionButton>
         </Card>}
 
         <Card className="overflow-hidden">
@@ -243,6 +262,7 @@ export default function VendasPage() {
             </tr>)}</tbody></table></div>
           </>}
         </Card>
+        <Pagination page={page} pageSize={pageSize} total={totalVendas} onChange={setPage} />
       </div>
 
       <Modal open={modal} onClose={() => setModal(false)} title="Nova venda profissional" size="xl">

@@ -2,9 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Alert, Button, Card, Skeleton } from '@/components/ui'
+import { Alert, Button, ButtonLink, Card, Skeleton } from '@/components/ui'
 import { ReservationCard } from '@/components/reservas/ReservationCard'
 import { ReservationReminderToast } from '@/components/reservas/ReservationReminderToast'
 import { ReservasAdiantamentosService, getReservationLabelByBranch, type ReservationDeposit } from '@/services/reservas-adiantamentos'
@@ -43,8 +42,8 @@ export default function ReservasPage() {
     <div className="rounded-[28px] p-5 md:p-6 text-white bg-[radial-gradient(circle_at_top_left,rgba(242,183,46,.35),transparent_28%),linear-gradient(135deg,#07111f,#0f2742_50%,#07111f)] shadow-2xl overflow-hidden relative">
       <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-[rgba(242,183,46,.16)] blur-2xl" />
       <div className="relative flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div><div className="text-xs uppercase tracking-[0.25em] text-amber-200">VF Nexus</div><h1 className="text-2xl md:text-3xl font-bold mt-2">{labels.menu}</h1><p className="text-sm text-slate-300 mt-1 max-w-2xl">Reserve horários, produtos, serviços ou encomendas com entrada, recibo editável e notificação no horário.</p></div>
-        <Link href="/reservas/nova"><Button variant="secondary">＋ {labels.novo}</Button></Link>
+        <div><div className="text-xs uppercase tracking-[0.25em] text-amber-200">VF Nexus</div><h1 className="text-2xl md:text-3xl font-bold mt-2">{labels.menu}</h1><p className="text-sm text-[var(--vf-text3)] mt-1 max-w-2xl">Reserve horários, produtos, serviços ou encomendas com entrada, recibo editável e notificação no horário.</p></div>
+        <ButtonLink href="/reservas/nova" variant="secondary">＋ {labels.novo}</ButtonLink>
       </div>
     </div>
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

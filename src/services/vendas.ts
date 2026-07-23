@@ -3,14 +3,20 @@ import { calcularVenda, validarMotivoObrigatorio } from '@/lib/business-rules'
 import { db, getCurrentUserId, getEmpresaId, hojeISO, normalizeEmptyValues, normalizeError, assertPermission, type AnyRecord } from './_base'
 import { ClientesService } from './clientes'
 import { AuditoriaService } from './auditoria'
+import { tenantPage, type PageRequest } from './tenant/tenant-query'
 
 export type VendaPagamentoForm = { forma_pagamento: string; valor: number; valor_recebido?: number; troco?: number }
-export type RegistrarVendaForm = VendaForm & { itens?: VendaItemForm[]; desconto_geral?: number; pagamentos?: VendaPagamentoForm[]; valor_recebido?: number; status_entrega?: string }
+export type RegistrarVendaForm = VendaForm & { itens?: VendaItemForm[]; desconto_geral?: number; pagamentos?: VendaPagamentoForm[]; valor_recebido?: number; status_entrega?: string; idempotency_key?: string }
 
 export const VendasService = {
   async registrar(form: RegistrarVendaForm): Promise<Venda> {
     await assertPermission('vendas', 'criar')
     const empresaId = await getEmpresaId()
+    if (form.idempotency_key) {
+      const { data: existing, error: existingError } = await db().from('vendas').select('*, itens:venda_itens(*), pagamentos:venda_pagamentos(*)').eq('empresa_id', empresaId).eq('idempotency_key', form.idempotency_key).maybeSingle()
+      if (existingError) throw normalizeError(existingError, 'Erro ao validar idempotência da venda.')
+      if (existing) return existing as Venda
+    }
     const itensForm: VendaItemForm[] = (form.itens?.length ? form.itens : [{
       produto_id: form.produto_id || undefined,
       produto_nome: form.produto_nome || 'Venda avulsa',
@@ -67,6 +73,7 @@ export const VendasService = {
       valor_recebido: calculo.pagamentos.reduce((a, p) => a + Number(p.valor_recebido || p.valor || 0), 0),
       troco: calculo.troco,
       data_venda: form.data_venda || hojeISO(),
+      idempotency_key: form.idempotency_key || null,
     } as AnyRecord)
 
     const itensPayloadBase = calculo.itens.map((item) => ({ empresa_id: empresaId, produto_id: item.produto_id || null, produto_nome: item.produto_nome, quantidade: item.quantidade, preco_unitario: item.preco_unitario, custo_unitario: item.custo_unitario || 0, desconto: item.desconto || 0, subtotal: item.subtotal, total: item.total, lucro: item.lucro }))
@@ -107,6 +114,29 @@ export const VendasService = {
     await AuditoriaService.registrar('vendas.criar.fallback_dev', 'vendas', venda.id, { total: venda.total, pagamentos: pagamentosPayload.length, itens: itensPayload.length }).catch(() => null)
 
     return { ...venda, itens: (itensData ?? []) as VendaItem[] }
+  },
+
+  async listarPaginado(request: PageRequest & { inicio?: string; fim?: string } = {}) {
+    return tenantPage<Venda>('vendas', '*, itens:venda_itens(*), pagamentos:venda_pagamentos(*)', { ...request, orderBy: request.orderBy || 'data_venda', ascending: request.ascending ?? false }, (query) => {
+      if (request.inicio) query = query.gte('data_venda', request.inicio)
+      if (request.fim) query = query.lte('data_venda', request.fim)
+      const search = String(request.search || '').trim().replace(/[,%()]/g, ' ')
+      if (search) query = query.or(`produto_nome.ilike.%${search}%,cliente_nome.ilike.%${search}%,cliente_whatsapp.ilike.%${search}%`)
+      return query
+    })
+  },
+
+  async resumoPeriodo(inicio: string, fim: string): Promise<{ faturamento: number; lucro: number; custo: number; quantidade: number; ticket_medio: number }> {
+    const { data, error } = await db().rpc('vf_vendas_resumo_periodo', { p_inicio: inicio, p_fim: fim })
+    if (error) throw normalizeError(error, 'Erro ao carregar o resumo das vendas.')
+    const result = (data || {}) as AnyRecord
+    return {
+      faturamento: Number(result.faturamento || 0),
+      lucro: Number(result.lucro || 0),
+      custo: Number(result.custo || 0),
+      quantidade: Number(result.quantidade || 0),
+      ticket_medio: Number(result.ticket_medio || 0),
+    }
   },
 
   async listarPorPeriodo(inicio?: string, fim?: string): Promise<Venda[]> {

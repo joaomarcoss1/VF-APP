@@ -1,6 +1,7 @@
 import type { Cliente, ClienteForm } from '@/types'
 import { db, getEmpresaId, normalizeEmptyValues, normalizeError, withEmpresa } from './_base'
 import { AuditoriaService } from './auditoria'
+import { tenantPage, type PageRequest } from './tenant/tenant-query'
 
 export function normalizarTelefoneBR(valor?: string | null): string {
   const digits = String(valor ?? '').replace(/\D/g, '')
@@ -9,6 +10,15 @@ export function normalizarTelefoneBR(valor?: string | null): string {
 }
 
 export const ClientesService = {
+  async listarPaginado(request: PageRequest = {}) {
+    return tenantPage<any>('clientes', '*', { ...request, orderBy: request.orderBy || 'nome', ascending: request.ascending ?? true }, (query) => {
+      query = query.eq('ativo', true)
+      const search = String(request.search || '').trim().replace(/[,%()]/g, ' ')
+      if (search) query = query.or(`nome.ilike.%${search}%,telefone.ilike.%${search}%,whatsapp.ilike.%${search}%,email.ilike.%${search}%`)
+      return query
+    })
+  },
+
   async listar(search?: string): Promise<Cliente[]> {
     const empresaId = await getEmpresaId()
     let q = db().from('clientes').select('*').eq('empresa_id', empresaId).eq('ativo', true).order('nome')

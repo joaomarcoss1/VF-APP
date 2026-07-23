@@ -144,10 +144,10 @@ export default function CardapioPage() {
               <p className="text-xs text-[var(--vf-text2)] mt-1 break-all">{buildPublicCatalogUrl(catalogoPublico.slug)}</p>
               <div className="flex flex-wrap gap-2 mt-3">
                 <Button size="sm" variant="secondary" onClick={() => navigator.clipboard?.writeText(buildPublicCatalogUrl(catalogoPublico.slug)).then(() => toast.success('Link copiado!'))}>Copiar link</Button>
-                <a className="inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all select-none vf-motion px-3 py-1.5 text-xs bg-[linear-gradient(135deg,var(--vf-primary),var(--vf-secondary))] text-white" href={buildWhatsappUrl({ telefone: identidade?.telefone, texto: catalogWhatsappText(identidade?.nome || empresa?.nome || 'VF Nexus', buildPublicCatalogUrl(catalogoPublico.slug)) })} target="_blank">WhatsApp</a>
+                <a className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl font-semibold transition-all select-none vf-motion px-3 py-1.5 text-xs bg-[linear-gradient(135deg,var(--vf-primary),var(--vf-secondary))] text-[var(--vf-fg-on-primary)]" href={buildWhatsappUrl({ telefone: identidade?.telefone, texto: catalogWhatsappText(identidade?.nome || empresa?.nome || 'VF Nexus', buildPublicCatalogUrl(catalogoPublico.slug)) })} target="_blank">WhatsApp</a>
               </div>
             </div>
-            <div className="rounded-3xl border border-[var(--vf-border)] bg-white p-3 justify-self-center"><img src={buildQrImageUrl(buildPublicCatalogUrl(catalogoPublico.slug), 180)} alt="QR Code do catálogo" className="w-36 h-36 object-contain" /></div>
+            <div className="rounded-3xl border border-[var(--vf-border)] bg-[var(--vf-card)] p-3 justify-self-center"><img src={buildQrImageUrl(buildPublicCatalogUrl(catalogoPublico.slug), 180)} alt="QR Code do catálogo" className="w-36 h-36 object-contain" /></div>
           </Card>
         )}
 
@@ -181,7 +181,7 @@ export default function CardapioPage() {
             <Field label="Descrição">
               <Input defaultValue={cardapio?.descricao ?? ''} onBlur={e => cardapio && salvarCardapio.mutate({ descricao: e.target.value })} placeholder="Ex: Cardápio oficial da casa" />
             </Field>
-            <Button variant="secondary" loading={salvarCardapio.isPending}>Auto salvar</Button>
+            <Badge color={salvarCardapio.isPending ? 'blue' : 'green'}>{salvarCardapio.isPending ? 'Salvando…' : 'Salvamento automático'}</Badge>
           </div>
         </Card>
 

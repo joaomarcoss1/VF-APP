@@ -9,7 +9,7 @@ import { fmtCurrency } from '@/lib/precificacao'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import toast from 'react-hot-toast'
 
-function PortalCard({ children, className='' }: { children: ReactNode; className?: string }) { return <div className={`rounded-[28px] border border-white/10 bg-white/[.06] backdrop-blur p-4 shadow-2xl shadow-black/20 ${className}`}>{children}</div> }
+function PortalCard({ children, className='' }: { children: ReactNode; className?: string }) { return <div className={`rounded-[28px] border border-white/10 bg-[var(--vf-card)]/[.06] backdrop-blur p-4 shadow-2xl shadow-black/20 ${className}`}>{children}</div> }
 
 export default function PortalEntregadorPage() {
   const online = useOnlineStatus()

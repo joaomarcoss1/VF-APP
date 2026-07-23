@@ -62,11 +62,15 @@ export const ModulosEmpresaService = {
 
     try {
       empresaId = await getEmpresaId()
-      const { data, error } = await db().from('empresas').select('id,nome,nome_fantasia,tipo,ramo_atividade,codigo_empresa,matricula_empresa').eq('id', empresaId).maybeSingle()
-      if (error) throw error
-      empresa = data
-    } catch {
+    } catch (error) {
+      if (!isMaster) throw error
       empresaId = null
+    }
+    if (empresaId) {
+      const { data, error } = await db().from('empresas').select('id,nome,nome_fantasia,tipo,ramo_atividade,codigo_empresa,matricula_empresa').eq('id', empresaId).maybeSingle()
+      if (error) throw normalizeError(error, 'Não foi possível carregar a empresa operacional.')
+      if (!data) throw new Error('Empresa operacional não encontrada.')
+      empresa = data
     }
 
     const ramo = empresa ? ramoFromEmpresa(empresa) : storedRamo()
@@ -81,7 +85,7 @@ export const ModulosEmpresaService = {
       if (!error) overrides = (data ?? []) as EmpresaModuloRow[]
     }
 
-    const modules = mergeModules(getDefaultModulesForRamo(ramo.id), overrides)
+    const modules = empresaId ? mergeModules(getDefaultModulesForRamo(ramo.id), overrides) : []
     const featureMap = new Map<string, FeatureDefinition>()
     for (const modulo of modules) {
       const feature = moduleToFeature(modulo)

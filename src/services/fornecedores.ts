@@ -1,8 +1,17 @@
 import type { Fornecedor, FornecedorForm } from '@/types'
 import { db, getEmpresaId, normalizeEmptyValues, normalizeError, withEmpresa, assertPermission, type AnyRecord } from './_base'
 import { AuditoriaService } from './auditoria'
+import { tenantPage, type PageRequest } from './tenant/tenant-query'
 
 export const FornecedoresService = {
+  async listarPaginado(request: PageRequest = {}) {
+    return tenantPage<Fornecedor>('fornecedores', '*', { ...request, orderBy: request.orderBy || 'nome', ascending: request.ascending ?? true }, (query) => {
+      query = query.eq('ativo', true)
+      const search = String(request.search || '').trim().replace(/[,%()]/g, ' ')
+      if (search) query = query.or(`nome.ilike.%${search}%,cnpj.ilike.%${search}%,telefone.ilike.%${search}%,whatsapp.ilike.%${search}%`)
+      return query
+    })
+  },
   async listar(): Promise<Fornecedor[]> {
     const empresaId = await getEmpresaId()
     const { data, error } = await db().from('fornecedores').select('*').eq('empresa_id', empresaId).eq('ativo', true).order('nome')

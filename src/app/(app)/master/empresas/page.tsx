@@ -16,16 +16,20 @@ export default function MasterEmpresasPage() {
     retry: false,
   })
 
-  function operarComoEmpresa(empresa: any) {
-    setEmpresaSelecionadaMaster({
+  async function operarComoEmpresa(empresa: any) {
+    try {
+      await setEmpresaSelecionadaMaster({
       id: empresa.id,
       nome: empresa.nome_fantasia || empresa.nome || empresa.razao_social,
       codigo_empresa: empresa.codigo_empresa || null,
       matricula_empresa: empresa.matricula_empresa || null,
       ramo_atividade: empresa.ramo_atividade || empresa.tipo || null,
-    })
-    toast.success(`Operando como ${empresa.nome_fantasia || empresa.nome || 'empresa selecionada'}.`)
-    router.push('/dashboard')
+      })
+      toast.success(`Operando como ${empresa.nome_fantasia || empresa.nome || 'empresa selecionada'}.`)
+      router.push('/dashboard')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível ativar a empresa operacional.')
+    }
   }
 
   return (

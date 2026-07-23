@@ -48,18 +48,18 @@ export default function CozinhaPage() {
         <div className="rounded-[26px] border border-amber-200 bg-amber-50 p-5"><div className="flex items-center gap-3"><Clock3 className="text-amber-600" /><span className="text-sm font-black uppercase text-amber-700">Em preparo</span></div><strong className="mt-3 block text-4xl font-black text-amber-700">{counters.em_preparo}</strong></div>
         <div className="rounded-[26px] border border-emerald-200 bg-emerald-50 p-5"><div className="flex items-center gap-3"><ChefHat className="text-emerald-600" /><span className="text-sm font-black uppercase text-emerald-700">Prontos</span></div><strong className="mt-3 block text-4xl font-black text-emerald-700">{counters.pronto}</strong></div>
       </section>
-      <section className="mt-6 rounded-[30px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+      <section className="mt-6 rounded-[30px] border border-[var(--vf-border)] bg-[var(--vf-card)] p-4 shadow-sm md:p-5">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <h2 className="text-xl font-black text-slate-950">Fila da cozinha</h2>
-            <p className="text-sm font-semibold text-slate-500">Vermelho: novo · Amarelo: em preparo · Verde: pronto para retirada.</p>
+            <h2 className="text-xl font-black text-[var(--vf-text)]">Fila da cozinha</h2>
+            <p className="text-sm font-semibold text-[var(--vf-text3)]">Vermelho: novo · Amarelo: em preparo · Verde: pronto para retirada.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {filters.map((item) => <button key={item.id} onClick={() => setFilter(item.id)} className={`rounded-full px-4 py-2 text-xs font-black transition ${filter === item.id ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-700'}`}>{item.label}</button>)}
+            {filters.map((item) => <button key={item.id} onClick={() => setFilter(item.id)} className={`rounded-full px-4 py-2 text-xs font-black transition ${filter === item.id ? 'bg-slate-950 text-white' : 'bg-[var(--vf-surface2)] text-[var(--vf-text2)] hover:bg-blue-50 hover:text-blue-700'}`}>{item.label}</button>)}
           </div>
         </div>
         {loading ? <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-[280px] vf-skeleton" />)}</div> : <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{filtered.map((order) => <KitchenOrderCard key={order.id} order={order} onChangeStatus={(status) => change(order.id, status)} />)}</div>}
-        {!loading && filtered.length === 0 && <div className="vf-empty mt-5 text-center"><strong>Nenhum pedido nessa fila.</strong><p className="text-sm text-slate-500">Aguardando novos pedidos do atendimento.</p></div>}
+        {!loading && filtered.length === 0 && <div className="vf-empty mt-5 text-center"><strong>Nenhum pedido nessa fila.</strong><p className="text-sm text-[var(--vf-text3)]">Aguardando novos pedidos do atendimento.</p></div>}
       </section>
     </OperationalShell>
   )

@@ -117,7 +117,7 @@ Dê recomendações concretas e acionáveis.`
             {messages.map((msg, i) => (
               <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {msg.role === 'assistant' && (
-                  <div className="w-7 h-7 rounded-full bg-[var(--vf-secondary)] flex items-center justify-center text-[var(--vf-fg-on-primary)] text-xs font-bold flex-shrink-0 mt-1">✦</div>
+                  <div className="w-7 h-7 rounded-full bg-[var(--vf-secondary)] flex items-center justify-center text-[var(--vf-fg-on-secondary)] text-xs font-bold flex-shrink-0 mt-1">✦</div>
                 )}
                 <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-[13px] leading-relaxed whitespace-pre-wrap ${
                   msg.role === 'user'
@@ -134,7 +134,7 @@ Dê recomendações concretas e acionáveis.`
 
             {loading && (
               <div className="flex gap-3 justify-start">
-                <div className="w-7 h-7 rounded-full bg-[var(--vf-secondary)] flex items-center justify-center text-[var(--vf-fg-on-primary)] text-xs font-bold flex-shrink-0">✦</div>
+                <div className="w-7 h-7 rounded-full bg-[var(--vf-secondary)] flex items-center justify-center text-[var(--vf-fg-on-secondary)] text-xs font-bold flex-shrink-0">✦</div>
                 <div className="px-4 py-3 rounded-2xl rounded-bl-sm bg-[var(--vf-surface2)] border border-[color-mix(in_srgb,var(--vf-border)_45%,transparent)]">
                   <div className="flex items-center gap-1.5">
                     {[0,1,2].map(i => (

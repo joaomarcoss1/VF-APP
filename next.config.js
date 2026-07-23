@@ -1,5 +1,4 @@
 const path = require('path')
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -9,15 +8,11 @@ const nextConfig = {
     ],
   },
   poweredByHeader: false,
-  typescript: {
-    // O typecheck continua obrigatório no script npm run typecheck.
-    // Mantido aqui para impedir que o build da Vercel fique preso em verificação duplicada do Next/Turbopack.
-    ignoreBuildErrors: true,
-  },
-  experimental: {
-    cpus: 1,
-  },
+  reactStrictMode: true,
   outputFileTracingRoot: path.join(__dirname),
+  webpack(config) {
+    config.resolve.symlinks = false
+    return config
+  },
 }
-
 module.exports = nextConfig

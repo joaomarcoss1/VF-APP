@@ -50,10 +50,13 @@ export const BillingV15Service = {
   },
 
   async criarCheckout(plano: PlanoSaasV15) {
-    const res = await fetch('/api/stripe/checkout', {
+    const { data: sessionData, error: sessionError } = await db().auth.getSession()
+    const accessToken = sessionData.session?.access_token
+    if (sessionError || !accessToken) throw new Error('Sessão expirada. Entre novamente para continuar.')
+    const res = await fetch('/api/billing/checkout', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plano_codigo: plano.codigo, plano_id: plano.id }),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ plano_codigo: plano.codigo }),
     })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(data?.error || 'Erro ao criar checkout Stripe.')

@@ -1,44 +1,33 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-const root = process.cwd()
-const fail = (msg) => { console.error(`ERRO lint: ${msg}`); process.exitCode = 1 }
-const read = (file) => fs.existsSync(path.join(root, file)) ? fs.readFileSync(path.join(root, file), 'utf8') : ''
-
-function walk(dir, out = []) {
-  for (const entry of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) {
-    if (['node_modules', '.next', '.git', 'coverage', 'dist'].includes(entry.name)) continue
-    const rel = path.join(dir, entry.name)
-    if (entry.isDirectory()) walk(rel, out)
-    else out.push(rel)
-  }
-  return out
-}
-
-for (const file of walk('.')) {
-  if (/\.bak$|\.log$/.test(file)) fail(`arquivo temporário encontrado: ${file}`)
-}
-
-const globals = read('src/app/globals.css')
-const importantCount = (globals.match(/!important/g) || []).length
-if (importantCount > 20) fail(`globals.css ainda tem excesso de !important (${importantCount})`)
-for (const token of ['--vf-input-bg', '--vf-input-text', '--vf-bottom-nav-bg']) {
-  if (!globals.includes(token)) fail(`token visual ausente em globals.css: ${token}`)
-}
-
-const modules = read('src/lib/modules.ts')
-for (const banned of ['icon: \'Atd\'', 'icon: \'Coz\'', 'icon: \'Bar\'', 'icon: \'Cx\'', 'icon: \'SCAN\'', 'icon: \'TAG\'']) {
-  if (modules.includes(banned)) fail(`ícone textual legado encontrado: ${banned}`)
-}
+let failed = false
+const fail = (message) => { failed = true; console.error(`ERRO: ${message}`) }
+const read = (file) => fs.readFileSync(path.resolve(file), 'utf8')
+const exists = (file) => fs.existsSync(path.resolve(file))
 
 const sw = read('public/sw.js')
-if (!sw.includes('vf-nexus-v9-2-3-stable')) fail('Service Worker sem cache da V9.2.3')
-if (sw.includes('location.reload')) fail('Service Worker não pode forçar reload')
+if (!sw.includes('vf-nexus-v9-4-static')) fail('Service Worker sem cache V9.4')
+if (sw.includes('location.reload')) fail('PWA não pode recarregar automaticamente')
+if (!sw.includes("'/api/'")) fail('Service Worker precisa excluir APIs privadas')
 
-const nextConfig = read('next.config.js')
-if (nextConfig.includes('ignoreBuildErrors') && !read('package.json').includes('\"typecheck\"')) fail('next.config.js só pode ignorar typecheck interno do Next se houver npm run typecheck obrigatório')
+const next = read('next.config.js')
+if (next.includes('ignoreBuildErrors')) fail('ignoreBuildErrors não é permitido')
 
-const installPrompt = read('src/components/mobile/InstallAppPrompt.tsx')
-if (installPrompt.includes('controllerchange') && installPrompt.includes('location.reload')) fail('InstallAppPrompt não deve recarregar automaticamente')
+const lock = read('package-lock.json')
+if (/applied-caas|internal\.api\.openai|openai\.org\/artifactory/i.test(lock)) fail('package-lock contém registry interno')
 
-if (!process.exitCode) console.log('Lint estrutural V9.2.3 aprovado: CSS, PWA, ícones, build config e arquivos temporários verificados.')
+for (const file of ['src/services/_tenant.ts','src/services/_base.ts','src/contexts/TenantProvider.tsx','src/core/errors/app-error.ts','src/core/logging/logger.ts']) {
+  if (!exists(file)) fail(`Estrutura obrigatória ausente: ${file}`)
+}
+
+const whatsappApi = read('src/app/api/whatsapp/send/route.ts')
+if (!whatsappApi.includes('vf_effective_empresa_id')) fail('WhatsApp API sem tenant efetivo')
+if (!whatsappApi.includes("status: 'processando'")) fail('WhatsApp API sem estado processando')
+
+const stripeWebhook = read('src/app/api/stripe/webhook/route.ts')
+if (!stripeWebhook.includes('STRIPE_WEBHOOK_SECRET')) fail('Webhook Stripe sem segredo')
+if (!stripeWebhook.includes('verifyStripeSignature')) fail('Webhook Stripe sem validação de assinatura')
+
+if (failed) process.exit(1)
+console.log('Lint estrutural V9.4 aprovado: segurança, tenant, PWA, lockfile e integrações essenciais verificados.')

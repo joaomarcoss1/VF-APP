@@ -3,7 +3,8 @@
 import { useQuery } from '@tanstack/react-query'
 import Header from '@/components/layout/Header'
 import { Alert, Badge, Button, Card, Empty, Skeleton } from '@/components/ui'
-import { ComprovantesService, gerarLinkWhatsappComprovante, IdentidadeService } from '@/services'
+import { ComprovantesService, IdentidadeService } from '@/services'
+import { WhatsAppService } from '@/services/whatsapp/whatsapp.service'
 import { fmtCurrency } from '@/lib/precificacao'
 import { exportarComprovantePDF } from '@/lib/exports'
 import toast from 'react-hot-toast'
@@ -27,8 +28,11 @@ export default function ComprovantesPage() {
     }, identidade || undefined)
     toast.success('PDF gerado.')
   }
-  const reenviar = (c: any) => {
-    window.open(gerarLinkWhatsappComprovante(c.cliente_whatsapp, c.mensagem || `Comprovante ${c.descricao || ''} - ${fmtCurrency(c.total)}`), '_blank')
+  const reenviar = async (c: any) => {
+    const mensagem = c.mensagem || `Comprovante ${c.descricao || ''} - ${fmtCurrency(c.total)}`
+    const result = await WhatsAppService.sendOrFallback({ telefone: c.cliente_whatsapp || '', mensagem, tipo: 'comprovante', entidade: 'comprovantes_historico', entidadeId: c.id, consentimento: true })
+    if (result.mode === 'fallback' && result.fallbackUrl) window.open(result.fallbackUrl, '_blank', 'noopener,noreferrer')
+    toast.success(result.mode === 'provider' ? 'Envio registrado no WhatsApp.' : 'WhatsApp aberto para envio manual.')
   }
   return <div className="vf-fadein">
     <Header title="Comprovantes" />

@@ -2,23 +2,32 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Header from '@/components/layout/Header'
-import { ConfirmActionButton, Button, Modal, Badge, Field, Input, Card, Empty } from '@/components/ui'
+import { ConfirmActionButton, Button, Modal, Badge, Field, Input, Card, Empty, SearchInput, Pagination, Skeleton, Alert } from '@/components/ui'
 import { FornecedoresService } from '@/services'
 import type { Fornecedor, FornecedorForm } from '@/types'
 import toast from 'react-hot-toast'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { useTenant } from '@/hooks/useTenant'
 
 const EMPTY: FornecedorForm = { nome:'', telefone:'', whatsapp:'', email:'', cnpj:'', endereco:'', observacoes:'', ativo:true }
 
 export default function FornecedoresPage() {
   const qc = useQueryClient()
+  const tenant = useTenant()
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const pageSize = 20
+  const debouncedSearch = useDebouncedValue(search, 350)
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<Fornecedor | null>(null)
   const [form, setForm] = useState<FornecedorForm>({ ...EMPTY })
 
-  const { data: fornecedores, isLoading } = useQuery({ queryKey:['fornecedores'], queryFn: FornecedoresService.listar })
-  const criar = useMutation({ mutationFn: FornecedoresService.criar, onSuccess: () => { qc.invalidateQueries({queryKey:['fornecedores']}); toast.success('Fornecedor criado!'); close() } })
-  const atualizar = useMutation({ mutationFn: ({id,form}:any) => FornecedoresService.atualizar(id, form), onSuccess: () => { qc.invalidateQueries({queryKey:['fornecedores']}); toast.success('Atualizado!'); close() } })
-  const excluir = useMutation({ mutationFn: FornecedoresService.excluir, onSuccess: () => { qc.invalidateQueries({queryKey:['fornecedores']}); toast.success('Removido.') } })
+  const { data, isLoading, error } = useQuery({ queryKey:['fornecedores-v9-4', tenant.operationalKey, page, pageSize, debouncedSearch], queryFn: () => FornecedoresService.listarPaginado({ page, pageSize, search: debouncedSearch }), placeholderData: previous => previous })
+  const fornecedores = data?.data ?? []
+  const total = data?.total ?? 0
+  const criar = useMutation({ mutationFn: FornecedoresService.criar, onSuccess: () => { qc.invalidateQueries({queryKey:['fornecedores-v9-4']}); toast.success('Fornecedor criado!'); close() } })
+  const atualizar = useMutation({ mutationFn: ({id,form}:any) => FornecedoresService.atualizar(id, form), onSuccess: () => { qc.invalidateQueries({queryKey:['fornecedores-v9-4']}); toast.success('Atualizado!'); close() } })
+  const excluir = useMutation({ mutationFn: FornecedoresService.excluir, onSuccess: () => { qc.invalidateQueries({queryKey:['fornecedores-v9-4']}); toast.success('Removido.') } })
 
   const close = () => { setModal(false); setEditing(null); setForm({ ...EMPTY }) }
   const openNew  = () => { setEditing(null); setForm({ ...EMPTY }); setModal(true) }
@@ -35,11 +44,10 @@ export default function FornecedoresPage() {
     <div className="vf-fadein">
       <Header title="Fornecedores" />
       <div className="p-4 md:p-6 space-y-5">
-        <div className="flex justify-end">
-          <Button onClick={openNew}>＋ Novo Fornecedor</Button>
-        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><SearchInput value={search} onChange={(value) => { setSearch(value); setPage(1) }} placeholder="Buscar nome, CNPJ ou telefone..." /><Button onClick={openNew}>＋ Novo Fornecedor</Button></div>
+        {error && <Alert type="error">{(error as Error).message}</Alert>}
 
-        {isLoading ? <div className="vf-skeleton h-40 rounded-lg" /> :
+        {isLoading ? <Skeleton className="h-40" /> :
          (fornecedores?.length ?? 0) === 0 ? (
           <Empty icon="🚚" title="Nenhum fornecedor" description="Cadastre seus fornecedores para comparar preços."
             action={<Button onClick={openNew}>Cadastrar fornecedor</Button>} />
@@ -69,6 +77,7 @@ export default function FornecedoresPage() {
             ))}
           </div>
         )}
+        <Pagination page={page} pageSize={pageSize} total={total} onChange={setPage} />
       </div>
 
       <Modal open={modal} onClose={close} title={editing ? 'Editar Fornecedor' : 'Novo Fornecedor'} size="md">

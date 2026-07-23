@@ -55,7 +55,16 @@ async function addLogo(doc: any, branding?: Partial<IdentidadeEmpresa>, x = 14, 
   const primary = hexToRgb(branding?.cor_primaria)
   const dataUrl = await imageUrlToDataUrl(branding?.logo_url)
   if (dataUrl) {
-    try { const fmt = dataUrl.includes('image/jpeg') || dataUrl.includes('image/jpg') ? 'JPEG' : 'PNG'; doc.addImage(dataUrl, fmt, x, y, 14, 14, undefined, 'FAST'); return } catch {}
+    try {
+      const fmt = dataUrl.includes('image/jpeg') || dataUrl.includes('image/jpg') ? 'JPEG' : 'PNG'
+      const props = doc.getImageProperties(dataUrl)
+      const box = 14
+      const ratio = Number(props.width || 1) / Number(props.height || 1)
+      const width = ratio >= 1 ? box : box * ratio
+      const height = ratio >= 1 ? box / ratio : box
+      doc.addImage(dataUrl, fmt, x + (box - width) / 2, y + (box - height) / 2, width, height, undefined, 'FAST')
+      return
+    } catch {}
   }
   doc.setFillColor(primary[0], primary[1], primary[2])
   doc.roundedRect(x, y, 12, 12, 2, 2, 'F')
@@ -102,16 +111,17 @@ function pdfTheme(branding?: Partial<IdentidadeEmpresa>) {
     b,
     primary: hexToRgb(b.cor_primaria),
     secondary: hexToRgb(b.cor_secundaria),
-    bg: hexToRgb(b.cor_fundo || '#F8FAFC'),
-    surface: hexToRgb(b.cor_card || b.cor_superficie || '#FFFFFF'),
-    surface2: hexToRgb(b.cor_superficie2 || '#EEF4FB'),
-    border: hexToRgb(b.cor_borda || '#DCE6F0'),
-    text: hexToRgb(b.cor_texto || '#102033'),
-    muted: hexToRgb(b.cor_muted || '#667085'),
-    success: hexToRgb(b.cor_sucesso || '#16A34A'),
-    warn: hexToRgb(b.cor_alerta || '#F59E0B'),
-    error: hexToRgb(b.cor_erro || '#DC2626'),
-    info: hexToRgb(b.cor_info || b.cor_primaria || '#0A8DFF'),
+    // Documentos usam fundo de impressão neutro. Branding altera somente acentos.
+    bg: [248, 250, 252] as [number, number, number],
+    surface: [255, 255, 255] as [number, number, number],
+    surface2: [241, 245, 249] as [number, number, number],
+    border: [220, 230, 240] as [number, number, number],
+    text: [16, 32, 51] as [number, number, number],
+    muted: [100, 116, 139] as [number, number, number],
+    success: [21, 128, 61] as [number, number, number],
+    warn: [180, 83, 9] as [number, number, number],
+    error: [198, 40, 40] as [number, number, number],
+    info: [3, 105, 161] as [number, number, number],
   }
 }
 
@@ -225,15 +235,17 @@ export async function gerarComprovantePDFBlob(
 
   doc.setFont('helvetica', 'normal')
   comprovante.itens.forEach((item, index) => {
-    if (y > 245) { addLightFooter(doc, theme); doc.addPage(); fillPage(doc, theme); y = 24 }
-    if (index % 2 === 0) { doc.setFillColor(...theme.surface2); doc.roundedRect(14, y - 5, W - 28, 10, 2, 2, 'F') }
+    const nameLines = doc.splitTextToSize(String(item.nome || 'Item'), W - 112)
+    const rowHeight = Math.max(10, nameLines.length * 4.5 + 5)
+    if (y + rowHeight > 246) { addLightFooter(doc, theme); doc.addPage(); fillPage(doc, theme); y = 24 }
+    if (index % 2 === 0) { doc.setFillColor(...theme.surface2); doc.roundedRect(14, y - 5, W - 28, rowHeight, 2, 2, 'F') }
     doc.setTextColor(...theme.text)
     doc.setFontSize(8.5)
-    doc.text(String(item.nome).slice(0, 56), 18, y + 1)
+    doc.text(nameLines, 18, y + 1)
     doc.text(String(item.quantidade), W - 68, y + 1)
     doc.text(`R$ ${fmtBRL(item.valor_unitario)}`, W - 42, y + 1)
     doc.text(`R$ ${fmtBRL(item.total)}`, W - 18, y + 1, { align: 'right' })
-    y += 10
+    y += rowHeight
   })
 
   y += 6

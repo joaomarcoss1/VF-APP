@@ -1,6 +1,7 @@
 import type { Produto, ProdutoForm } from '@/types'
 import { db, getEmpresaId, normalizeEmptyValues, normalizeError, withEmpresa, assertPermission, type AnyRecord } from './_base'
 import { AuditoriaService } from './auditoria'
+import { tenantPage, type PageRequest } from './tenant/tenant-query'
 
 const PRODUTO_COLUMNS = new Set([
   'nome','descricao','categoria','foto_url','imagem_url','sku','codigo_barras','codigo_interno','marca','modelo','tamanho','cor',
@@ -75,6 +76,16 @@ function sanitizeProdutoPayload(input: AnyRecord, options: { criando?: boolean }
 }
 
 export const ProdutosService = {
+  async listarPaginado(request: PageRequest & { category?: string } = {}) {
+    return tenantPage<any>('produtos', '*', { ...request, orderBy: request.orderBy || 'nome', ascending: request.ascending ?? true }, (query) => {
+      query = query.eq('ativo', true)
+      if (request.category) query = query.eq('categoria', request.category)
+      const search = String(request.search || '').trim().replace(/[,%()]/g, ' ')
+      if (search) query = query.or(`nome.ilike.%${search}%,sku.ilike.%${search}%,codigo_barras.ilike.%${search}%`)
+      return query
+    })
+  },
+
   async listar(search?: string): Promise<Produto[]> {
     const empresaId = await getEmpresaId()
     let q = db().from('produtos').select('*, ficha_tecnica(*), estoque:produto_estoque(*)').eq('empresa_id', empresaId).eq('ativo', true).order('nome')

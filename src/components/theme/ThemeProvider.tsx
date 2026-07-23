@@ -28,14 +28,8 @@ function getInitialTheme(): VFThemeMode {
 }
 
 export function VFThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<VFThemeMode>('system')
-  const [resolvedTheme, setResolvedTheme] = useState<VFResolvedTheme>('dark')
-
-  useEffect(() => {
-    const initial = getInitialTheme()
-    setThemeState(initial)
-    setResolvedTheme(resolveTheme(initial))
-  }, [])
+  const [theme, setThemeState] = useState<VFThemeMode>(() => getInitialTheme())
+  const [resolvedTheme, setResolvedTheme] = useState<VFResolvedTheme>(() => resolveTheme(getInitialTheme()))
 
   useEffect(() => {
     if (typeof window === 'undefined') return

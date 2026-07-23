@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { IdentidadeService, MultiempresaService } from '@/services'
 import { getBrandingLogo } from '@/lib/branding'
 import BrandLogo from '@/components/BrandLogo'
@@ -18,6 +18,7 @@ export default function Header({ title }: { title?: string }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [empresaOperacional, setEmpresaOperacional] = useState<EmpresaSelecionadaMaster | null>(null)
   const router = useRouter()
+  const queryClient = useQueryClient()
   const pathname = usePathname()
   const { data: identidade } = useQuery({ queryKey: ['identidade-global'], queryFn: IdentidadeService.obter, retry: false, staleTime: 60_000 })
   const { data: tenant } = useQuery({ queryKey: ['tenant-context-header'], queryFn: MultiempresaService.contexto, retry: false, staleTime: 60_000 })
@@ -102,7 +103,7 @@ export default function Header({ title }: { title?: string }) {
           <button
             type="button"
             className="rounded-full border border-[var(--vf-border)] bg-[var(--vf-card)] px-3 py-1 text-[var(--vf-primary)] hover:bg-[var(--vf-surface2)]"
-            onClick={() => { clearEmpresaSelecionadaMaster(); router.push('/master') }}
+            onClick={async () => { try { await clearEmpresaSelecionadaMaster(); queryClient.clear(); router.push('/master') } catch { router.push('/master') } }}
           >
             Sair do modo empresa
           </button>

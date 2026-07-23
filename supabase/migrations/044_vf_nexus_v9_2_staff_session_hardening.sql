@@ -1,276 +1,132 @@
--- VF Nexus — Base tenant + Isolamento de notificações centrais
--- Corrige: function public.vf_is_master() does not exist
--- Corrige: function public.vf_same_empresa(uuid) does not exist
-
+-- VF Nexus V9.2 - Hardening de login e sessão operacional de atendimento
 create extension if not exists pgcrypto;
 
--- ============================================================
--- 1. BASE MASTER / PERFIS
--- ============================================================
-
-create table if not exists public.master_admins (
+create table if not exists public.restaurant_staff_sessions (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid,
-  email text,
-  nome text,
+  empresa_id uuid references public.empresas(id) on delete cascade not null,
+  staff_id uuid references public.restaurant_staff(id) on delete cascade not null,
+  setor text not null,
   ativo boolean default true,
   created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  expires_at timestamptz default (now() + interval '12 hours'),
+  ended_at timestamptz
 );
 
-alter table if exists public.master_admins
-  add column if not exists user_id uuid,
-  add column if not exists email text,
-  add column if not exists nome text,
-  add column if not exists ativo boolean default true,
-  add column if not exists created_at timestamptz default now(),
-  add column if not exists updated_at timestamptz default now();
-
-alter table if exists public.perfis
-  add column if not exists empresa_id uuid,
-  add column if not exists is_master boolean default false,
-  add column if not exists bloqueado boolean default false;
-
--- ============================================================
--- 2. FUNÇÃO: ADMIN MASTER
--- ============================================================
-
-create or replace function public.vf_is_master()
-returns boolean
-language plpgsql
-stable
-security definer
-set search_path = public, auth
-as $$
-declare
-  v_uid uuid;
-  v_ok boolean := false;
-begin
-  v_uid := auth.uid();
-
-  if v_uid is null then
-    return false;
-  end if;
-
-  if to_regclass('public.master_admins') is not null then
-    select exists (
-      select 1
-      from public.master_admins
-      where user_id = v_uid
-        and coalesce(ativo, true) = true
-    )
-    into v_ok;
-
-    if coalesce(v_ok, false) then
-      return true;
-    end if;
-  end if;
-
-  if to_regclass('public.perfis') is not null then
-    select exists (
-      select 1
-      from public.perfis
-      where id = v_uid
-        and coalesce(is_master, false) = true
-        and coalesce(bloqueado, false) = false
-    )
-    into v_ok;
-
-    if coalesce(v_ok, false) then
-      return true;
-    end if;
-  end if;
-
-  return false;
-exception
-  when others then
-    return false;
-end;
-$$;
-
-grant execute on function public.vf_is_master() to anon, authenticated;
-
--- ============================================================
--- 3. FUNÇÃO: EMPRESA ATUAL
--- ============================================================
-
-create or replace function public.vf_current_empresa_id()
-returns uuid
-language plpgsql
-stable
-security definer
-set search_path = public, auth
-as $$
-declare
-  v_uid uuid;
-  v_empresa_id uuid;
-begin
-  v_uid := auth.uid();
-
-  if v_uid is null then
-    return null;
-  end if;
-
-  if to_regclass('public.perfis') is not null then
-    select empresa_id
-    into v_empresa_id
-    from public.perfis
-    where id = v_uid
-      and empresa_id is not null
-    limit 1;
-
-    if v_empresa_id is not null then
-      return v_empresa_id;
-    end if;
-  end if;
-
-  if to_regclass('public.usuarios_empresas') is not null then
-
-    if exists (
-      select 1
-      from information_schema.columns
-      where table_schema = 'public'
-        and table_name = 'usuarios_empresas'
-        and column_name = 'profile_id'
-    ) then
-      execute '
-        select empresa_id
-        from public.usuarios_empresas
-        where profile_id = $1
-          and empresa_id is not null
-        limit 1
-      '
-      using v_uid
-      into v_empresa_id;
-
-      if v_empresa_id is not null then
-        return v_empresa_id;
-      end if;
-    end if;
-
-    if exists (
-      select 1
-      from information_schema.columns
-      where table_schema = 'public'
-        and table_name = 'usuarios_empresas'
-        and column_name = 'usuario_id'
-    ) then
-      execute '
-        select empresa_id
-        from public.usuarios_empresas
-        where usuario_id = $1
-          and empresa_id is not null
-        limit 1
-      '
-      using v_uid
-      into v_empresa_id;
-
-      if v_empresa_id is not null then
-        return v_empresa_id;
-      end if;
-    end if;
-
-  end if;
-
-  return null;
-exception
-  when others then
-    return null;
-end;
-$$;
-
-grant execute on function public.vf_current_empresa_id() to anon, authenticated;
-
--- ============================================================
--- 4. FUNÇÃO: COMPARAR EMPRESA
--- ============================================================
-
-create or replace function public.vf_same_empresa(p_empresa_id uuid)
-returns boolean
-language plpgsql
-stable
-security definer
-set search_path = public, auth
-as $$
-begin
-  if p_empresa_id is null then
-    return false;
-  end if;
-
-  return p_empresa_id = public.vf_current_empresa_id();
-exception
-  when others then
-    return false;
-end;
-$$;
-
-grant execute on function public.vf_same_empresa(uuid) to anon, authenticated;
-
--- ============================================================
--- 5. NOTIFICAÇÕES CENTRAIS
--- ============================================================
-
-create table if not exists public.notificacoes_central (
-  id uuid primary key default gen_random_uuid(),
-  empresa_id uuid references public.empresas(id) on delete cascade,
-  tipo text not null default 'info',
-  titulo text not null,
-  mensagem text not null,
-  prioridade text default 'media',
-  entidade text,
-  entidade_id uuid,
-  lida boolean default false,
-  lida_em timestamptz,
-  created_at timestamptz default now()
-);
-
-alter table if exists public.notificacoes_central
+alter table if exists public.restaurant_staff_sessions
   add column if not exists empresa_id uuid references public.empresas(id) on delete cascade,
-  add column if not exists tipo text default 'info',
-  add column if not exists titulo text,
-  add column if not exists mensagem text,
-  add column if not exists prioridade text default 'media',
-  add column if not exists entidade text,
-  add column if not exists entidade_id uuid,
-  add column if not exists lida boolean default false,
-  add column if not exists lida_em timestamptz,
-  add column if not exists created_at timestamptz default now();
+  add column if not exists staff_id uuid references public.restaurant_staff(id) on delete cascade,
+  add column if not exists setor text,
+  add column if not exists ativo boolean default true,
+  add column if not exists expires_at timestamptz default (now() + interval '12 hours'),
+  add column if not exists ended_at timestamptz;
 
-update public.notificacoes_central
-set
-  tipo = coalesce(tipo, 'info'),
-  prioridade = coalesce(prioridade, 'media'),
-  lida = coalesce(lida, false),
-  created_at = coalesce(created_at, now());
+create index if not exists restaurant_staff_sessions_empresa_staff_idx on public.restaurant_staff_sessions(empresa_id, staff_id, ativo);
+create index if not exists restaurant_staff_sessions_expires_idx on public.restaurant_staff_sessions(expires_at);
 
-create index if not exists notificacoes_central_empresa_created_idx
-on public.notificacoes_central(empresa_id, created_at desc);
+create or replace function public.vf_only_digits(p_text text)
+returns text language sql immutable as $$ select regexp_replace(coalesce(p_text,''), '\D', '', 'g') $$;
 
-create index if not exists notificacoes_central_empresa_lida_idx
-on public.notificacoes_central(empresa_id, lida);
-
-alter table if exists public.notificacoes_central enable row level security;
-
-drop policy if exists notificacoes_tenant_select_v92 on public.notificacoes_central;
-
-create policy notificacoes_tenant_select_v92
-on public.notificacoes_central
-for select
-using (
-  public.vf_is_master()
-  or public.vf_same_empresa(empresa_id)
-);
-
-drop policy if exists notificacoes_tenant_write_v92 on public.notificacoes_central;
-
-create policy notificacoes_tenant_write_v92
-on public.notificacoes_central
-for all
-using (
-  public.vf_is_master()
-  or public.vf_same_empresa(empresa_id)
+drop function if exists public.vf_restaurante_login_staff(text,text,text) cascade;
+create or replace function public.vf_restaurante_login_staff(p_nome text, p_cpf text, p_codigo_empresa text)
+returns table(
+  id uuid,
+  empresa_id uuid,
+  nome text,
+  cpf text,
+  cpf_normalizado text,
+  setor text,
+  cargo text,
+  ativo boolean,
+  session_id uuid
 )
-with check (
-  public.vf_is_master()
-  or public.vf_same_empresa(empresa_id)
-);
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_empresa_id uuid;
+  v_staff public.restaurant_staff%rowtype;
+  v_session_id uuid;
+  v_nome text := lower(trim(coalesce(p_nome,'')));
+  v_cpf text := public.vf_only_digits(p_cpf);
+  v_codigo text := trim(coalesce(p_codigo_empresa,''));
+begin
+  if v_nome = '' or length(v_cpf) < 11 or v_codigo = '' then
+    raise exception 'Informe nome, CPF e código/matrícula da empresa.';
+  end if;
+
+  select e.id into v_empresa_id
+  from public.empresas e
+  where lower(coalesce(e.codigo_empresa,'')) = lower(v_codigo)
+     or lower(coalesce(e.matricula_empresa,'')) = lower(v_codigo)
+     or e.id::text = v_codigo
+  limit 1;
+
+  if v_empresa_id is null then
+    raise exception 'Empresa não encontrada para o código/matrícula informado.';
+  end if;
+
+  select * into v_staff
+  from public.restaurant_staff rs
+  where rs.empresa_id = v_empresa_id
+    and rs.cpf_normalizado = v_cpf
+    and coalesce(rs.ativo,true) = true
+  limit 1;
+
+  if v_staff.id is null then
+    raise exception 'Funcionário não encontrado ou inativo nesta empresa.';
+  end if;
+
+  if position(split_part(v_nome, ' ', 1) in lower(coalesce(v_staff.nome,''))) = 0 then
+    raise exception 'Nome não confere com o CPF informado.';
+  end if;
+
+  insert into public.restaurant_staff_sessions(empresa_id, staff_id, setor, ativo, created_at, expires_at)
+  values (v_empresa_id, v_staff.id, v_staff.setor, true, now(), now() + interval '12 hours')
+  returning restaurant_staff_sessions.id into v_session_id;
+
+  update public.restaurant_staff
+  set ultimo_acesso_em = now(), updated_at = now()
+  where id = v_staff.id and empresa_id = v_empresa_id;
+
+  return query select v_staff.id, v_staff.empresa_id, v_staff.nome, v_staff.cpf, v_staff.cpf_normalizado, v_staff.setor, v_staff.cargo, v_staff.ativo, v_session_id;
+end;
+$$;
+
+grant execute on function public.vf_restaurante_login_staff(text,text,text) to anon, authenticated;
+
+create or replace function public.vf_restaurante_validar_staff_session(p_session_id uuid, p_setor text default null)
+returns table(
+  session_valida boolean,
+  empresa_id uuid,
+  staff_id uuid,
+  setor text,
+  pode_operar boolean
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_row record;
+begin
+  select s.*, st.ativo as staff_ativo
+  into v_row
+  from public.restaurant_staff_sessions s
+  join public.restaurant_staff st on st.id = s.staff_id and st.empresa_id = s.empresa_id
+  where s.id = p_session_id
+    and s.ativo = true
+    and s.expires_at > now()
+  limit 1;
+
+  if v_row.id is null then
+    return query select false, null::uuid, null::uuid, null::text, false;
+    return;
+  end if;
+
+  return query select true, v_row.empresa_id, v_row.staff_id, v_row.setor,
+    (p_setor is null or v_row.setor = p_setor or v_row.setor in ('gerente','admin'))::boolean;
+end;
+$$;
+
+grant execute on function public.vf_restaurante_validar_staff_session(uuid,text) to anon, authenticated;

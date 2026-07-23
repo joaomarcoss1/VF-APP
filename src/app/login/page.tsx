@@ -8,6 +8,7 @@ import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { getRamoDefinition, getStoredInitialRamo, persistInitialRamo, type RamoAtividade } from '@/config/ramos'
 import { getSupabase, getSupabaseEnvStatus } from '@/lib/supabase'
 import { MultiempresaService, normalizarPapel } from '@/services'
+import { setEmpresaSelecionadaMaster } from '@/services/_tenant'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Building2, LockKeyhole, UserRound } from 'lucide-react'
 
@@ -59,14 +60,18 @@ function LoginPageContent() {
       let empresa: any = null
       if (codigoEmpresa.trim()) {
         empresa = await resolveEmpresaByCodigo(codigoEmpresa, perfil)
-        if (empresa?.id) {
-          localStorage.setItem('vf_nexus_empresa_operacional', empresa.id)
-          localStorage.setItem('vf_nexus_empresa_codigo', codigoEmpresa.trim())
+        if (empresa?.id && perfil.is_master) {
+          await setEmpresaSelecionadaMaster({
+            id: empresa.id,
+            nome: empresa.nome_fantasia || empresa.nome,
+            codigo_empresa: empresa.codigo_empresa || null,
+            matricula_empresa: empresa.matricula_empresa || null,
+            ramo_atividade: empresa.ramo_atividade || empresa.tipo || null,
+          })
         }
       } else {
         localStorage.removeItem('vf_nexus_empresa_codigo')
         if (!perfil.is_master && perfil.empresa_id) {
-          localStorage.setItem('vf_nexus_empresa_operacional', perfil.empresa_id)
           const { data } = await supabase.from('empresas').select('id,ramo_atividade,tipo,nome,nome_fantasia').eq('id', perfil.empresa_id).maybeSingle()
           empresa = data
         }
@@ -101,27 +106,27 @@ function LoginPageContent() {
 
   return (
     <main className="vf-ramo-screen min-h-dvh overflow-hidden p-4 text-[var(--vf-text)] vf-theme-transition" style={ramoStyle}>
-      <section className="mx-auto grid min-h-[calc(100dvh-2rem)] w-full max-w-6xl overflow-hidden rounded-[34px] border border-white/10 bg-white/[.04] shadow-2xl shadow-black/30 backdrop-blur-xl md:grid-cols-[1fr,460px]">
+      <section className="mx-auto grid min-h-[calc(100dvh-2rem)] w-full max-w-6xl overflow-hidden rounded-[34px] border border-white/10 bg-[var(--vf-card)]/[.04] shadow-2xl shadow-black/30 backdrop-blur-xl md:grid-cols-[1fr,460px]">
         <div className="hidden flex-col justify-between p-8 text-white md:flex lg:p-10">
           <div className="flex items-center justify-between gap-3">
-            <button onClick={() => router.push('/selecionar-ramo')} className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-4 py-2 text-xs font-black text-slate-100 transition hover:bg-white/15"><ArrowLeft size={15} /> Trocar ramo</button>
+            <button onClick={() => router.push('/selecionar-ramo')} className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-[var(--vf-card)]/10 px-4 py-2 text-xs font-black text-slate-100 transition hover:bg-[var(--vf-card)]/15"><ArrowLeft size={15} /> Trocar ramo</button>
             <ThemeToggle compact />
           </div>
           <div className="max-w-lg">
             <div className="mb-5 flex items-center gap-3">
-              <div className="grid h-16 w-16 place-items-center rounded-3xl bg-white text-4xl shadow-2xl shadow-black/30">{selectedRamo.icon}</div>
+              <div className="grid h-16 w-16 place-items-center rounded-3xl bg-[var(--vf-card)] text-4xl shadow-2xl shadow-black/30">{selectedRamo.icon}</div>
               <div>
                 <span className="text-xs font-black uppercase tracking-[.24em] text-amber-200">{selectedRamo.nome}</span>
                 <strong className="block text-2xl">VF Nexus</strong>
               </div>
             </div>
             <h1 className="text-5xl font-black leading-[.96] tracking-tight">{selectedRamo.loginTitle}</h1>
-            <p className="mt-5 text-base font-semibold leading-8 text-slate-300">{selectedRamo.loginSubtitle}</p>
+            <p className="mt-5 text-base font-semibold leading-8 text-[var(--vf-text3)]">{selectedRamo.loginSubtitle}</p>
             <div className="mt-8 grid grid-cols-2 gap-3">
-              {selectedRamo.dashboardCards.slice(0, 4).map((card) => <div key={card.label} className="rounded-3xl border border-white/10 bg-white/10 p-4 backdrop-blur"><span className="text-2xl">{card.icon}</span><strong className="mt-2 block text-sm">{card.label}</strong><p className="mt-1 text-xs font-semibold text-slate-300">{card.hint}</p></div>)}
+              {selectedRamo.dashboardCards.slice(0, 4).map((card) => <div key={card.label} className="rounded-3xl border border-white/10 bg-[var(--vf-card)]/10 p-4 backdrop-blur"><span className="text-2xl">{card.icon}</span><strong className="mt-2 block text-sm">{card.label}</strong><p className="mt-1 text-xs font-semibold text-[var(--vf-text3)]">{card.hint}</p></div>)}
             </div>
           </div>
-          <p className="text-xs font-semibold text-slate-400">© VF Nexus · Tecnologia NexLabs</p>
+          <p className="text-xs font-semibold text-[var(--vf-text3)]">© VF Nexus · Tecnologia NexLabs</p>
         </div>
 
         <div className="bg-[color-mix(in_srgb,var(--vf-surface)_92%,transparent)] p-6 md:p-9">
@@ -130,7 +135,7 @@ function LoginPageContent() {
             <ThemeToggle compact />
           </div>
           <div className="flex justify-center md:justify-start">
-            <div className="grid h-16 w-16 place-items-center rounded-3xl bg-white p-1.5 shadow-xl"><BrandLogo src="/nexlabs-logo.png" alt="VF Nexus" className="h-full w-full object-contain" /></div>
+            <div className="grid h-16 w-16 place-items-center rounded-3xl bg-[var(--vf-card)] p-1.5 shadow-xl"><BrandLogo src="/nexlabs-logo.png" alt="VF Nexus" className="h-full w-full object-contain" /></div>
           </div>
           <div className="mt-5 text-center md:text-left">
             <span className="inline-flex rounded-full bg-[color-mix(in_srgb,var(--vf-secondary)_14%,transparent)] px-3 py-1 text-xs font-black uppercase tracking-[.16em] text-[var(--vf-secondary)]">{selectedRamo.nome}</span>

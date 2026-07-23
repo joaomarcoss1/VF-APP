@@ -1,17 +1,21 @@
 {
   "name": "vf-app",
-  "version": "1.0.0",
+  "version": "9.4.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/build-stable.mjs",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "node scripts/lint-basic.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "validate": "npm run typecheck && npm run lint && npm run test && npm run build",
-    "build:next": "next build --webpack"
+    "build:next": "next build --webpack",
+    "diagnostico": "node scripts/diagnostico-producao.mjs",
+    "diagnostico:v9.4": "node scripts/diagnostico-v9-4.mjs",
+    "security:check": "node scripts/security-check-v9-4.mjs",
+    "validate:v9.4": "npm run diagnostico:v9.4 && npm run security:check && npm run typecheck && npm run lint && npm test && npm run build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.27.3",
@@ -51,8 +55,8 @@
     "vitest": "^2.1.8"
   },
   "engines": {
-    "node": ">=22 <25",
-    "npm": ">=10 <13"
+    "node": ">=22 <23",
+    "npm": ">=10 <12"
   },
   "overrides": {
     "postcss": "8.5.10"

@@ -60,9 +60,9 @@ export function OperationalShell({ sector, title, subtitle, children, actions }:
   if (moduleUnavailable) {
     return (
       <main className="grid min-h-dvh place-items-center bg-[#020617] p-5 text-white">
-        <section className="w-full max-w-md rounded-[32px] border border-white/10 bg-white/[.08] p-6 text-center shadow-2xl backdrop-blur">
+        <section className="w-full max-w-md rounded-[32px] border border-white/10 bg-[var(--vf-card)]/[.08] p-6 text-center shadow-2xl backdrop-blur">
           <h1 className="text-2xl font-black">Módulo não liberado para este ramo</h1>
-          <p className="mt-3 text-sm font-semibold leading-6 text-slate-300">Esta tela não pertence ao ramo atual da empresa ou não foi liberada pelo Admin Master.</p>
+          <p className="mt-3 text-sm font-semibold leading-6 text-[var(--vf-text3)]">Esta tela não pertence ao ramo atual da empresa ou não foi liberada pelo Admin Master.</p>
           <button onClick={() => router.push(firstHref)} className="vf-btn vf-btn-primary mt-5 w-full">Ir para uma função disponível</button>
         </section>
       </main>
@@ -72,12 +72,12 @@ export function OperationalShell({ sector, title, subtitle, children, actions }:
   if (ready && !canAccess(sector)) {
     return (
       <main className="grid min-h-dvh place-items-center bg-[#020617] p-5 text-white">
-        <section className="w-full max-w-md rounded-[32px] border border-white/10 bg-white/[.08] p-6 text-center shadow-2xl backdrop-blur">
+        <section className="w-full max-w-md rounded-[32px] border border-white/10 bg-[var(--vf-card)]/[.08] p-6 text-center shadow-2xl backdrop-blur">
           <div className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-red-500/15 text-red-200"><ShieldAlert size={32} /></div>
           <h1 className="mt-5 text-2xl font-black">Acesso restrito ao setor</h1>
-          <p className="mt-3 text-sm font-semibold leading-6 text-slate-300">Este funcionário está definido para o setor <strong>{staffSector}</strong> e não pode acessar <strong>{sector}</strong>. Gerente e Admin podem transitar entre setores.</p>
+          <p className="mt-3 text-sm font-semibold leading-6 text-[var(--vf-text3)]">Este funcionário está definido para o setor <strong>{staffSector}</strong> e não pode acessar <strong>{sector}</strong>. Gerente e Admin podem transitar entre setores.</p>
           <button onClick={trocarSetor} className="vf-btn vf-btn-primary mt-5 w-full">Voltar ao meu setor</button>
-          <button onClick={sairOperacional} className="mt-3 text-sm font-bold text-slate-300 hover:text-white">Sair do login operacional</button>
+          <button onClick={sairOperacional} className="mt-3 text-sm font-bold text-[var(--vf-text3)] hover:text-white">Sair do login operacional</button>
         </section>
       </main>
     )
@@ -88,7 +88,7 @@ export function OperationalShell({ sector, title, subtitle, children, actions }:
       <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-[248px,1fr]">
         <aside className="hidden border-r border-white/10 bg-[#030816] text-white shadow-2xl lg:flex lg:flex-col">
           <div className="flex items-center gap-3 border-b border-white/10 px-5 py-5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white p-1.5 shadow-lg shadow-blue-500/20"><BrandLogo src="/nexlabs-logo.png" alt="VF Nexus" className="h-full w-full object-contain" /></div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--vf-card)] p-1.5 shadow-lg shadow-blue-500/20"><BrandLogo src="/nexlabs-logo.png" alt="VF Nexus" className="h-full w-full object-contain" /></div>
             <div>
               <strong className="block leading-tight">VF Nexus</strong>
               <span className="text-[11px] font-bold uppercase tracking-[.18em] text-blue-200">Atendimento</span>
@@ -98,12 +98,12 @@ export function OperationalShell({ sector, title, subtitle, children, actions }:
             {visibleNav.map((item) => {
               const Icon = item.icon
               const active = pathname === item.href || pathname?.startsWith(`${item.href}/`)
-              return <Link key={item.href} href={item.href} className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition ${active ? 'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/25' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}><Icon size={18} /> {item.label}</Link>
+              return <Link key={item.href} href={item.href} className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition ${active ? 'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/25' : 'text-[var(--vf-text3)] hover:bg-[var(--vf-card)]/10 hover:text-white'}`}><Icon size={18} /> {item.label}</Link>
             })}
           </nav>
-          {staffName && <div className="mx-3 mb-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs font-bold text-slate-300">Operador<br /><span className="text-white">{staffName}</span><br /><span className="mt-1 inline-flex rounded-full bg-blue-500/15 px-2 py-1 uppercase text-blue-100">{staffSector}</span></div>}
-          <button onClick={trocarSetor} className="m-3 flex items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm font-bold text-slate-200 hover:bg-white/10"><ReceiptText size={16} /> {isOperationalLogin && staffSector !== 'gerente' ? 'Meu setor' : 'Trocar setor'}</button>
-          <button onClick={sairOperacional} className="m-3 mt-0 flex items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm font-bold text-slate-200 hover:bg-white/10"><LogOut size={16} /> Sair</button>
+          {staffName && <div className="mx-3 mb-2 rounded-2xl border border-white/10 bg-[var(--vf-card)]/5 p-3 text-xs font-bold text-[var(--vf-text3)]">Operador<br /><span className="text-white">{staffName}</span><br /><span className="mt-1 inline-flex rounded-full bg-blue-500/15 px-2 py-1 uppercase text-blue-100">{staffSector}</span></div>}
+          <button onClick={trocarSetor} className="m-3 flex items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm font-bold text-slate-200 hover:bg-[var(--vf-card)]/10"><ReceiptText size={16} /> {isOperationalLogin && staffSector !== 'gerente' ? 'Meu setor' : 'Trocar setor'}</button>
+          <button onClick={sairOperacional} className="m-3 mt-0 flex items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm font-bold text-slate-200 hover:bg-[var(--vf-card)]/10"><LogOut size={16} /> Sair</button>
         </aside>
         <section className="min-w-0">
           <header className="sticky top-0 z-30 border-b border-[var(--vf-border)] bg-[var(--vf-surface)]/92 text-[var(--vf-text)] backdrop-blur-xl vf-operational-header">
@@ -137,9 +137,9 @@ export function OperationalShell({ sector, title, subtitle, children, actions }:
       </nav>
       {panelOpen && <div className="fixed inset-0 z-[90] bg-slate-950/45 p-3 backdrop-blur-sm md:grid md:place-items-start md:justify-items-end md:p-5">
         <div className="ml-auto mt-16 w-full max-w-md rounded-[28px] bg-[var(--vf-surface)] p-4 text-[var(--vf-text)] shadow-2xl md:mt-0">
-          <div className="flex items-center justify-between gap-3"><div><h2 className="text-lg font-black text-[var(--vf-text)]">Notificações</h2><p className="text-xs font-semibold text-[var(--vf-text3)]">Pedidos, cozinha, caixa e alertas do setor.</p></div><button onClick={() => setPanelOpen(false)} className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-100"><X size={16} /></button></div>
+          <div className="flex items-center justify-between gap-3"><div><h2 className="text-lg font-black text-[var(--vf-text)]">Notificações</h2><p className="text-xs font-semibold text-[var(--vf-text3)]">Pedidos, cozinha, caixa e alertas do setor.</p></div><button onClick={() => setPanelOpen(false)} className="grid h-10 w-10 place-items-center rounded-2xl bg-[var(--vf-surface2)]"><X size={16} /></button></div>
           <div className="mt-4 max-h-[60dvh] space-y-3 overflow-y-auto pr-1">
-            {notifications.map((notification) => <div key={notification.id} className="rounded-2xl border border-[var(--vf-border)] bg-[var(--vf-surface2)] p-3"><strong className="block text-sm text-[var(--vf-text)]">{notification.title}</strong><p className="mt-1 text-xs font-semibold leading-5 text-[var(--vf-text2)]">{notification.message}</p><div className="mt-3 grid grid-cols-2 gap-2"><button onClick={() => openNotification(notification)} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white">Abrir</button><button onClick={() => markAsRead(notification.id)} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-700 ring-1 ring-slate-200">Lida</button></div></div>)}
+            {notifications.map((notification) => <div key={notification.id} className="rounded-2xl border border-[var(--vf-border)] bg-[var(--vf-surface2)] p-3"><strong className="block text-sm text-[var(--vf-text)]">{notification.title}</strong><p className="mt-1 text-xs font-semibold leading-5 text-[var(--vf-text2)]">{notification.message}</p><div className="mt-3 grid grid-cols-2 gap-2"><button onClick={() => openNotification(notification)} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white">Abrir</button><button onClick={() => markAsRead(notification.id)} className="rounded-xl bg-[var(--vf-card)] px-3 py-2 text-xs font-black text-[var(--vf-text2)] ring-1 ring-slate-200">Lida</button></div></div>)}
             {notifications.length === 0 && <div className="vf-empty py-8 text-center"><Bell size={22} /><strong className="mt-2 block">Nenhuma notificação pendente.</strong></div>}
           </div>
           {notifications.length > 0 && <button onClick={markAllAsRead} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white"><CheckCheck size={16} /> Marcar todas como lidas</button>}

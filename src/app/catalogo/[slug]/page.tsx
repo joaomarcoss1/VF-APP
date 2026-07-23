@@ -37,7 +37,7 @@ async function carregar(slug: string) {
 export default async function CatalogoPublicoPage({ params }: PageProps) {
   const { slug } = await params
   const dados = await carregar(slug)
-  if (!dados) return <main className="min-h-screen flex items-center justify-center bg-slate-50 p-6 text-center"><div><h1 className="text-2xl font-bold text-slate-900">Catálogo indisponível</h1><p className="text-slate-500 mt-2">O link pode ter sido desativado pela empresa.</p></div></main>
+  if (!dados) return <main className="min-h-screen flex items-center justify-center bg-[var(--vf-surface2)] p-6 text-center"><div><h1 className="text-2xl font-bold text-[var(--vf-text)]">Catálogo indisponível</h1><p className="text-[var(--vf-text3)] mt-2">O link pode ter sido desativado pela empresa.</p></div></main>
   const empresa = (dados.catalogo as any).empresa || {}
   const branding = resolveBranding({ ...empresa, nome: empresa.nome || dados.catalogo.titulo, logo_url: empresa.logo_url || '/nexlabs-logo.png' } as any)
   const categorias = groupCatalogByCategory(dados.produtos)
@@ -48,14 +48,14 @@ export default async function CatalogoPublicoPage({ params }: PageProps) {
     <main style={{ ['--vf-primary' as any]: branding.cor_primaria, ['--vf-secondary' as any]: branding.cor_secundaria, ['--vf-bg' as any]: branding.cor_fundo, ['--vf-text' as any]: branding.cor_texto, ['--vf-card' as any]: branding.cor_card, ['--vf-border' as any]: branding.cor_borda }} className="min-h-screen bg-[var(--vf-bg)] text-[var(--vf-text)]">
       <section className="sticky top-0 z-20 backdrop-blur-xl bg-[color-mix(in_srgb,var(--vf-bg)_88%,white)] border-b border-[var(--vf-border)]">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
-          <div className="w-14 h-14 rounded-3xl bg-white border border-[var(--vf-border)] overflow-hidden flex items-center justify-center shadow-sm"><BrandLogo src={branding.logo_url} alt={branding.nome} className="w-full h-full object-contain p-1" /></div>
+          <div className="w-14 h-14 rounded-3xl bg-[var(--vf-card)] border border-[var(--vf-border)] overflow-hidden flex items-center justify-center shadow-sm"><BrandLogo src={branding.logo_url} alt={branding.nome} className="w-full h-full object-contain p-1" /></div>
           <div className="min-w-0"><h1 className="font-bold text-lg leading-tight truncate">{dados.catalogo.titulo || branding.nome}</h1><p className="text-xs opacity-75 line-clamp-2">{dados.catalogo.descricao || 'Catálogo digital atualizado.'}</p></div>
           <a href={whatsapp} className="ml-auto hidden sm:inline-flex rounded-full px-4 py-2 bg-[var(--vf-primary)] text-white text-sm font-semibold">WhatsApp</a>
         </div>
       </section>
 
       <section className="max-w-4xl mx-auto px-4 py-5 space-y-6 pb-28">
-        {categorias.length === 0 && <div className="rounded-3xl bg-white p-8 text-center border border-[var(--vf-border)]"><b>Nenhum produto publicado ainda.</b></div>}
+        {categorias.length === 0 && <div className="rounded-3xl bg-[var(--vf-card)] p-8 text-center border border-[var(--vf-border)]"><b>Nenhum produto publicado ainda.</b></div>}
         {categorias.map(([categoria, itens]) => <div key={categoria} className="space-y-3">
           <div className="flex items-center gap-3"><div className="h-px flex-1 bg-[var(--vf-border)]" /><span className="rounded-full bg-[color-mix(in_srgb,var(--vf-primary)_10%,white)] border border-[var(--vf-border)] px-3 py-1 text-xs font-bold text-[var(--vf-primary)] uppercase tracking-widest">{categoria}</span><div className="h-px flex-1 bg-[var(--vf-border)]" /></div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

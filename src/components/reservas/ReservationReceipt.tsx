@@ -3,22 +3,36 @@
 import { useEffect, useState } from 'react'
 import { Alert, Button, Card, Field, Input, Textarea } from '@/components/ui'
 import { fmtCurrency } from '@/lib/precificacao'
-import { baixarReciboReservaPDF, copiarTextoRecibo } from '@/lib/reservas-pdf'
+import { baixarReciboReservaPDF, compartilharReciboReservaWhatsApp, copiarTextoRecibo } from '@/lib/reservas-pdf'
 import { getReservationLabelByBranch, type ReservationDeposit } from '@/services/reservas-adiantamentos'
 import toast from 'react-hot-toast'
 
 export function ReservationReceipt({ reserva, empresaNome = 'Empresa', onSaveCustom, saving }: { reserva: ReservationDeposit; empresaNome?: string; onSaveCustom?: (custom: Record<string, any>) => void; saving?: boolean }) {
   const labels = getReservationLabelByBranch(reserva.ramo_atividade)
   const [custom, setCustom] = useState<Record<string, any>>(reserva.recibo_custom || {})
+  const [sharing, setSharing] = useState(false)
+  const [consentimento, setConsentimento] = useState(false)
   useEffect(() => setCustom(reserva.recibo_custom || {}), [reserva.id, reserva.recibo_custom])
   const preview: ReservationDeposit = { ...reserva, recibo_custom: custom }
   async function copy() {
     await navigator.clipboard.writeText(copiarTextoRecibo(preview, empresaNome))
     toast.success('Recibo copiado.')
   }
-  function whats() {
-    const text = encodeURIComponent(copiarTextoRecibo(preview, empresaNome))
-    window.open(`https://wa.me/?text=${text}`, '_blank')
+  async function whats() {
+    if (!consentimento) return toast.error('Confirme o consentimento do cliente antes do envio.')
+    setSharing(true)
+    try {
+      const result = await compartilharReciboReservaWhatsApp(preview, empresaNome, consentimento)
+      if (result.mode === 'provider') toast.success('Recibo em PDF enviado pelo WhatsApp.')
+      else {
+        toast('O envio automático não está configurado. O WhatsApp será aberto para envio manual.')
+        if (result.fallbackUrl) window.open(result.fallbackUrl, '_blank', 'noopener,noreferrer')
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível preparar o recibo.')
+    } finally {
+      setSharing(false)
+    }
   }
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[0.95fr_1.05fr] gap-4">
@@ -28,10 +42,11 @@ export function ReservationReceipt({ reserva, empresaNome = 'Empresa', onSaveCus
         <Field label="Mensagem principal"><Textarea value={custom.mensagem || labels.mensagem} onChange={e => setCustom(p => ({ ...p, mensagem: e.target.value }))} /></Field>
         <Field label="Observação para o cliente"><Textarea value={custom.observacao_cliente || ''} onChange={e => setCustom(p => ({ ...p, observacao_cliente: e.target.value }))} placeholder="Ex.: O valor restante será pago no dia do atendimento." /></Field>
         <Field label="Termos ou garantia"><Textarea value={custom.termos || ''} onChange={e => setCustom(p => ({ ...p, termos: e.target.value }))} placeholder="Ex.: Reserva válida mediante confirmação do pagamento." /></Field>
+        <label className="flex items-start gap-2 rounded-2xl border border-[var(--vf-border)] p-3 text-sm text-[var(--vf-text2)]"><input type="checkbox" checked={consentimento} onChange={e => setConsentimento(e.target.checked)} className="mt-1" /><span>O cliente autorizou o envio deste recibo pelo WhatsApp.</span></label>
         <div className="grid grid-cols-2 gap-2">
           <Button variant="secondary" loading={saving} onClick={() => onSaveCustom?.(custom)}>Salvar pré-recibo</Button>
           <Button variant="ghost" onClick={copy}>Copiar texto</Button>
-          <Button variant="ghost" onClick={whats}>WhatsApp</Button>
+          <Button variant="ghost" loading={sharing} disabled={!consentimento} onClick={whats}>WhatsApp PDF</Button>
           <Button onClick={() => baixarReciboReservaPDF(preview, empresaNome)}>Gerar PDF</Button>
         </div>
       </Card>

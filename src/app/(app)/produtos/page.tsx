@@ -3,12 +3,14 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
-import { ConfirmActionButton, Button, Modal, Badge, Field, Input, Select, Card, Empty, Skeleton } from '@/components/ui'
+import { ConfirmActionButton, Button, Modal, Badge, Field, Input, Select, Card, Empty, Skeleton, SearchInput, Pagination } from '@/components/ui'
 import { FeatureConfigService, IdentidadeService, ProdutosService } from '@/services'
 import { fmtCurrency, fmtPct, avaliarCMV } from '@/lib/precificacao'
 import { getSectorProfile, isFeatureEnabled } from '@/lib/modules'
 import type { Produto } from '@/types'
 import toast from 'react-hot-toast'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { useTenant } from '@/hooks/useTenant'
 
 const CATEGORIAS_POR_RAMO: Record<string, Array<{ value: string; label: string }>> = {
   alimenticio: [
@@ -36,6 +38,7 @@ const EMPTY_FORM = {
 export default function ProdutosPage() {
   const qc = useQueryClient()
   const router = useRouter()
+  const tenant = useTenant()
   const { data: identidade } = useQuery({ queryKey: ['identidade-produtos'], queryFn: IdentidadeService.obter })
   const { data: moduleConfig } = useQuery({ queryKey: ['setor-modulos'], queryFn: FeatureConfigService.listar, retry: false, staleTime: 60_000 })
   const perfilSetor = getSectorProfile(identidade?.tipo)
@@ -45,6 +48,10 @@ export default function ProdutosPage() {
   const fichaHabilitada = isFeatureEnabled(identidade?.tipo, 'fichas', moduleConfig)
   const usarFichaTecnica = fichaHabilitada && ['alimentacao', 'hibrido'].includes(modoProduto)
   const [catFilter, setCatFilter] = useState('')
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const pageSize = 20
+  const debouncedSearch = useDebouncedValue(search, 350)
   const [modal, setModal]         = useState(false)
   const [editing, setEditing]     = useState<Produto | null>(null)
   const [form, setForm]           = useState({ ...EMPTY_FORM })
@@ -55,24 +62,27 @@ export default function ProdutosPage() {
     enabled: !!editing?.id && modal,
   })
 
-  const { data: produtos, isLoading } = useQuery({
-    queryKey: ['produtos', catFilter],
-    queryFn: () => ProdutosService.listar(catFilter || undefined),
+  const { data: produtosPage, isLoading } = useQuery({
+    queryKey: ['produtos-v9-4', tenant.operationalKey, page, pageSize, debouncedSearch, catFilter],
+    queryFn: () => ProdutosService.listarPaginado({ page, pageSize, search: debouncedSearch, category: catFilter || undefined }),
+    placeholderData: (previous) => previous,
   })
+  const produtos = (produtosPage?.data ?? []) as Produto[]
+  const totalProdutos = produtosPage?.total ?? 0
 
   const criar = useMutation({
     mutationFn: ProdutosService.criar,
-    onSuccess: (p) => { qc.invalidateQueries({queryKey:['produtos']}); toast.success(`${labels.singular} criado!`); closeModal(); if (usarFichaTecnica) router.push(`/fichas?produto=${p.id}`) },
+    onSuccess: (p) => { qc.invalidateQueries({queryKey:['produtos-v9-4']}); toast.success(`${labels.singular} criado!`); closeModal(); if (usarFichaTecnica) router.push(`/fichas?produto=${p.id}`) },
     onError: (err: any) => toast.error(err?.message ?? 'Não foi possível criar o produto.')
   })
   const atualizar = useMutation({
     mutationFn: ({ id, form }: any) => ProdutosService.atualizar(id, form),
-    onSuccess: () => { qc.invalidateQueries({queryKey:['produtos']}); toast.success('Produto atualizado!'); closeModal() },
+    onSuccess: () => { qc.invalidateQueries({queryKey:['produtos-v9-4']}); toast.success('Produto atualizado!'); closeModal() },
     onError: (err: any) => toast.error(err?.message ?? 'Não foi possível salvar o produto editado.')
   })
   const excluir = useMutation({
     mutationFn: ProdutosService.excluir,
-    onSuccess: () => { qc.invalidateQueries({queryKey:['produtos']}); toast.success('Produto removido.') },
+    onSuccess: () => { qc.invalidateQueries({queryKey:['produtos-v9-4']}); toast.success('Produto removido.') },
     onError: (err: any) => toast.error(err?.message ?? 'Não foi possível remover o produto.')
   })
 
@@ -96,11 +106,7 @@ export default function ProdutosPage() {
     else criar.mutate(data as any)
   }
 
-  // Indicadores por categoria
-  const statsByCategoria = categorias.map(cat => {
-    const list = (produtos ?? []).filter(p => p.categoria === cat.value)
-    return { cat: cat.value, label: cat.label, count: list.length, margem_media: list.length ? list.reduce((a,p)=>a+(p.margem_bruta??0),0)/list.length : 0 }
-  }).filter(s => s.count > 0)
+  const categoriasVisiveis = categorias
 
   return (
     <div className="vf-fadein">
@@ -110,17 +116,19 @@ export default function ProdutosPage() {
         {/* Filter bar */}
         <div className="flex flex-wrap gap-2 items-center justify-between">
           <div className="flex flex-wrap gap-2">
-            <Button variant={catFilter==='' ? 'primary' : 'ghost'} size="sm" onClick={() => setCatFilter('')}>Todos</Button>
-            {statsByCategoria.map(s => (
-              <Button key={s.cat} variant={catFilter===s.cat ? 'secondary' : 'ghost'} size="sm" onClick={() => setCatFilter(s.cat)}>
-                {s.label} <span className="text-[10px] opacity-60">({s.count})</span>
+            <Button variant={catFilter==='' ? 'primary' : 'ghost'} size="sm" onClick={() => { setCatFilter(''); setPage(1) }}>Todos</Button>
+            {categoriasVisiveis.map((category) => (
+              <Button key={category.value} variant={catFilter===category.value ? 'secondary' : 'ghost'} size="sm" onClick={() => { setCatFilter(category.value); setPage(1) }}>
+                {category.label}
               </Button>
             ))}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-1 min-w-[260px] justify-end gap-2">
+            <SearchInput className="max-w-sm flex-1" value={search} onChange={(value) => { setSearch(value); setPage(1) }} placeholder={`Buscar ${labels.plural.toLowerCase()}...`} />
             <Button variant="secondary" size="sm" onClick={async () => {
               const { exportarProdutosExcel } = await import('@/lib/exports')
-              exportarProdutosExcel(produtos ?? [])
+              const exportItems = await ProdutosService.listar(debouncedSearch || undefined)
+              exportarProdutosExcel(exportItems)
             }}>↓ Excel</Button>
             <Button onClick={openNew} size="sm">＋ {labels.newButton}</Button>
           </div>
@@ -185,6 +193,7 @@ export default function ProdutosPage() {
             })}
           </div>
         )}
+        <Pagination page={page} pageSize={pageSize} total={totalProdutos} onChange={setPage} />
       </div>
 
       {/* Modal Produto */}

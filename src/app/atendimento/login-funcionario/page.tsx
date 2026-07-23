@@ -34,17 +34,17 @@ export default function LoginFuncionarioPage() {
         <div className="hidden flex-col justify-between bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,.45),transparent_34%),linear-gradient(135deg,#06112a,#020617)] p-8 text-white md:flex">
           <div>
             <div className="flex items-center justify-between gap-3">
-              <button onClick={() => router.push('/login')} className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-4 py-2 text-xs font-black text-slate-100 transition hover:bg-white/15"><ArrowLeft size={15} /> Login admin</button>
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white p-1.5"><BrandLogo src="/nexlabs-logo.png" alt="VF Nexus" className="h-full w-full object-contain" /></div>
+              <button onClick={() => router.push('/login')} className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-[var(--vf-card)]/10 px-4 py-2 text-xs font-black text-slate-100 transition hover:bg-[var(--vf-card)]/15"><ArrowLeft size={15} /> Login admin</button>
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[var(--vf-card)] p-1.5"><BrandLogo src="/nexlabs-logo.png" alt="VF Nexus" className="h-full w-full object-contain" /></div>
             </div>
             <span className="mt-10 inline-flex rounded-full bg-amber-300/15 px-4 py-2 text-xs font-black uppercase tracking-[.18em] text-amber-100">Login operacional</span>
             <h1 className="mt-6 text-5xl font-black leading-none">Entre direto no seu setor.</h1>
-            <p className="mt-5 max-w-md text-sm font-semibold leading-7 text-slate-300">Atendimento, cozinha, bar/drinks e caixa sem acessar o painel completo. Cada funcionário vê apenas a própria operação.</p>
+            <p className="mt-5 max-w-md text-sm font-semibold leading-7 text-[var(--vf-text3)]">Atendimento, cozinha, bar/drinks e caixa sem acessar o painel completo. Cada funcionário vê apenas a própria operação.</p>
           </div>
-          <div className="rounded-3xl border border-white/10 bg-white/10 p-5">
+          <div className="rounded-3xl border border-white/10 bg-[var(--vf-card)]/10 p-5">
             <ShieldCheck className="text-emerald-300" />
             <strong className="mt-3 block">Isolado por empresa</strong>
-            <p className="mt-1 text-sm text-slate-300">CPF, setor e matrícula da empresa são validados antes de liberar o acesso.</p>
+            <p className="mt-1 text-sm text-[var(--vf-text3)]">CPF, setor e matrícula da empresa são validados antes de liberar o acesso.</p>
           </div>
         </div>
 

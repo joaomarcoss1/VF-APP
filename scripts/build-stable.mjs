@@ -1,24 +1,8 @@
-﻿import { spawnSync } from 'node:child_process'
-import { createRequire } from 'node:module'
-
-const require = createRequire(import.meta.url)
-const nextCli = require.resolve('next/dist/bin/next')
-
-const env = {
-  ...process.env,
-  NEXT_TELEMETRY_DISABLED: '1',
+import { spawnSync } from 'node:child_process'
+const isWindows = process.platform === 'win32'
+if (!isWindows) {
+  const res = spawnSync('bash', ['scripts/build-stable.sh'], { stdio: 'inherit' })
+  process.exit(res.status ?? 1)
 }
-
-console.log('VF Nexus build estável: executando Next via Node, compatível com Windows/Vercel...')
-
-const result = spawnSync(process.execPath, [nextCli, 'build', '--webpack'], {
-  stdio: 'inherit',
-  env,
-})
-
-if (result.error) {
-  console.error(result.error)
-  process.exit(1)
-}
-
-process.exit(result.status ?? 1)
+const res = spawnSync('node_modules/.bin/next.cmd', ['build', '--webpack'], { stdio: 'inherit', shell: true, env: { ...process.env, NEXT_TELEMETRY_DISABLED: '1' } })
+process.exit(res.status ?? 1)

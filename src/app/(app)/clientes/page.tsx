@@ -3,34 +3,45 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Header from '@/components/layout/Header'
-import { ConfirmActionButton, Alert, Badge, Button, Card, Empty, Field, Input, Modal, Select, Skeleton, Textarea } from '@/components/ui'
+import { ConfirmActionButton, Alert, Badge, Button, Card, Empty, Field, Input, Modal, Select, Skeleton, Textarea, SearchInput, Pagination } from '@/components/ui'
 import { ClientesService } from '@/services'
 import type { Cliente, ClienteForm, TipoCliente } from '@/types'
 import toast from 'react-hot-toast'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { useTenant } from '@/hooks/useTenant'
 
 const EMPTY: ClienteForm = { nome: '', telefone: '', whatsapp: '', email: '', endereco: '', documento: '', tipo: 'cliente', origem: 'manual', observacoes: '', ativo: true }
 
 export default function ClientesPage() {
   const qc = useQueryClient()
+  const tenant = useTenant()
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const pageSize = 20
+  const debouncedSearch = useDebouncedValue(search, 350)
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<Cliente | null>(null)
   const [form, setForm] = useState<ClienteForm>({ ...EMPTY })
-  const { data, isLoading, error } = useQuery({ queryKey: ['clientes', search], queryFn: () => ClientesService.listar(search) })
-  const clientes = data ?? []
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['clientes-v9-4', tenant.operationalKey, page, pageSize, debouncedSearch],
+    queryFn: () => ClientesService.listarPaginado({ page, pageSize, search: debouncedSearch }),
+    placeholderData: (previous) => previous,
+  })
+  const clientes = (data?.data ?? []) as Cliente[]
+  const totalClientes = data?.total ?? 0
   const stats = {
-    total: clientes.length,
+    total: totalClientes,
     whatsapp: clientes.filter(c => c.whatsapp).length,
     leads: clientes.filter(c => c.tipo === 'lead').length,
   }
   const salvar = useMutation({
     mutationFn: () => editing ? ClientesService.atualizar(editing.id, form) : ClientesService.criar(form),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['clientes'] }); toast.success(editing ? 'Cliente atualizado.' : 'Cliente cadastrado.'); close() },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['clientes-v9-4'] }); toast.success(editing ? 'Cliente atualizado.' : 'Cliente cadastrado.'); close() },
     onError: (e: Error) => toast.error(e.message),
   })
   const excluir = useMutation({
     mutationFn: (id: string) => ClientesService.excluir(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['clientes'] }); toast.success('Cliente removido.') },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['clientes-v9-4'] }); toast.success('Cliente removido.') },
     onError: (e: Error) => toast.error(e.message),
   })
   const openNew = () => { setEditing(null); setForm({ ...EMPTY }); setModal(true) }
@@ -49,7 +60,7 @@ export default function ClientesPage() {
       </div>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div><h2 className="text-lg font-semibold">Base de clientes</h2><p className="text-sm text-[var(--vf-text2)]">Use essa lista para vendas, agenda, cobrança e relacionamento.</p></div>
-        <div className="flex gap-2"><Input placeholder="Buscar cliente..." value={search} onChange={e => setSearch(e.target.value)} /><Button onClick={openNew}>＋ Novo cliente</Button></div>
+        <div className="flex flex-col sm:flex-row gap-2"><SearchInput value={search} onChange={(value) => { setSearch(value); setPage(1) }} placeholder="Buscar cliente..." /><Button onClick={openNew}>＋ Novo cliente</Button></div>
       </div>
       {error && <Alert type="error">{(error as Error).message}</Alert>}
       {isLoading ? <Skeleton className="h-52" /> : !clientes.length ? <Empty icon="👥" title="Nenhum cliente cadastrado" description="Cadastre clientes manualmente ou registre vendas/agendamentos." action={<Button onClick={openNew}>Cadastrar cliente</Button>} /> : (
@@ -61,6 +72,7 @@ export default function ClientesPage() {
           </Card>)}
         </div>
       )}
+      <Pagination page={page} pageSize={pageSize} total={totalClientes} onChange={setPage} />
     </div>
     <Modal open={modal} onClose={close} title={editing ? 'Editar cliente' : 'Novo cliente'} size="lg">
       <div className="space-y-4">
